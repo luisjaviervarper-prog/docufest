@@ -2883,10 +2883,13 @@ async function getObrasSorted(){
 }
 function workObraCardHtml(o, pending){
   return `
-    <div class="card work-obra-card" data-id="${o.id}" style="cursor:pointer;">
-      <div class="card-title">🏗 ${escapeHtml(o.nombre || '—')}</div>
-      <div class="card-muted">${o.numeroObra ? 'Nº ' + escapeHtml(o.numeroObra) : '—'}</div>
-      <div class="card-muted">${pending} tarea${pending === 1 ? '' : 's'} sin marcar</div>
+    <div class="card work-obra-card" data-id="${o.id}" style="display:flex; align-items:center; gap:10px;">
+      <input type="checkbox" class="obra-finalizada-check" data-id="${o.id}" ${o.finalizada ? 'checked' : ''} style="width:20px; height:20px; flex-shrink:0;">
+      <div class="work-obra-open" data-id="${o.id}" style="flex:1; cursor:pointer;">
+        <div class="card-title">🏗 ${escapeHtml(o.nombre || '—')}</div>
+        <div class="card-muted">${o.numeroObra ? 'Nº ' + escapeHtml(o.numeroObra) : '—'}</div>
+        <div class="card-muted">${pending} tarea${pending === 1 ? '' : 's'} sin marcar</div>
+      </div>
     </div>
   `;
 }
@@ -2896,17 +2899,12 @@ async function renderWorkObrasView(){
   if (obras.length === 0) { container.innerHTML = '<p class="help-text">Sin obras añadidas todavía.</p>'; return; }
   const allConceptos = await dbGetAll('workConceptos');
   const pendingCounts = {};
-  const totalCounts = {};
-  allConceptos.forEach(c => {
-    totalCounts[c.obraId] = (totalCounts[c.obraId] || 0) + 1;
-    if (!c.checked) pendingCounts[c.obraId] = (pendingCounts[c.obraId] || 0) + 1;
-  });
+  allConceptos.forEach(c => { if (!c.checked) pendingCounts[c.obraId] = (pendingCounts[c.obraId] || 0) + 1; });
   const activas = [];
   const finalizadas = [];
   obras.forEach(o => {
-    const total = totalCounts[o.id] || 0;
     const pending = pendingCounts[o.id] || 0;
-    (total > 0 && pending === 0 ? finalizadas : activas).push({ obra: o, pending });
+    (o.finalizada ? finalizadas : activas).push({ obra: o, pending });
   });
   activas.sort((a, b) => b.pending - a.pending || b.obra.createdAt - a.obra.createdAt);
   finalizadas.sort((a, b) => b.obra.createdAt - a.obra.createdAt);
@@ -4361,8 +4359,17 @@ document.getElementById('btnToggleWorkObrasEdit').addEventListener('click', () =
   document.getElementById('btnToggleWorkObrasEdit').textContent = workObrasEditMode ? '✅ Cerrar edición' : '✏️ Modificar';
 });
 document.getElementById('workObrasView').addEventListener('click', (e) => {
-  const card = e.target.closest('.work-obra-card');
-  if (card) go('work-obra-detail', { obraId: card.dataset.id });
+  const open = e.target.closest('.work-obra-open');
+  if (open) go('work-obra-detail', { obraId: open.dataset.id });
+});
+document.getElementById('workObrasView').addEventListener('change', async (e) => {
+  const check = e.target.closest('.obra-finalizada-check');
+  if (!check) return;
+  const obra = await dbGet('workObras', check.dataset.id);
+  if (!obra) return;
+  obra.finalizada = check.checked;
+  await updateObra(obra);
+  await renderWorkObrasView();
 });
 
 document.getElementById('btnAddWorkConcepto').addEventListener('click', async () => {
