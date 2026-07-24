@@ -2885,12 +2885,19 @@ async function renderWorkObrasView(){
   const obras = await getObrasSorted();
   const container = document.getElementById('workObrasView');
   if (obras.length === 0) { container.innerHTML = '<p class="help-text">Sin obras añadidas todavía.</p>'; return; }
-  container.innerHTML = obras.map(o => `
+  const allConceptos = await dbGetAll('workConceptos');
+  const pendingCounts = {};
+  allConceptos.forEach(c => { if (!c.checked) pendingCounts[c.obraId] = (pendingCounts[c.obraId] || 0) + 1; });
+  container.innerHTML = obras.map(o => {
+    const pending = pendingCounts[o.id] || 0;
+    return `
     <div class="card work-obra-card" data-id="${o.id}" style="cursor:pointer;">
       <div class="card-title">🏗 ${escapeHtml(o.nombre || '—')}</div>
       <div class="card-muted">${o.numeroObra ? 'Nº ' + escapeHtml(o.numeroObra) : '—'}</div>
+      <div class="card-muted">${pending} tarea${pending === 1 ? '' : 's'} sin marcar</div>
     </div>
-  `).join('');
+  `;
+  }).join('');
 }
 async function renderWorkObrasEditList(){
   const obras = await getObrasSorted();
@@ -2929,24 +2936,34 @@ async function deleteConceptoCascade(id){
   await dbDeleteWhere('workObservaciones', 'conceptoId', id);
   await dbDelete('workConceptos', id);
 }
-async function renderWorkConceptosView(obraId){
-  const items = await dbGetAll('workConceptos', 'obraId', obraId);
-  items.sort((a, b) => a.displayId - b.displayId);
-  const container = document.getElementById('workConceptosView');
-  if (items.length === 0) { container.innerHTML = '<p class="help-text">Sin conceptos en el checklist todavía.</p>'; return; }
-  container.innerHTML = items.map(c => `
+function conceptoRowHtml(c){
+  return `
     <div class="card" data-id="${c.id}" style="cursor:default; display:flex; align-items:center; gap:10px;">
       <input type="checkbox" class="concepto-check" data-id="${c.id}" ${c.checked ? 'checked' : ''} style="width:20px; height:20px; flex-shrink:0;">
       <div class="concepto-open" data-id="${c.id}" style="flex:1; cursor:pointer;">
         <span class="card-title" style="${c.checked ? 'text-decoration:line-through; opacity:0.6;' : ''}">#${c.displayId} ${escapeHtml(c.concepto || '')}</span>
       </div>
     </div>
-  `).join('');
+  `;
+}
+async function renderWorkConceptosView(obraId){
+  const items = await dbGetAll('workConceptos', 'obraId', obraId);
+  items.sort((a, b) => a.displayId - b.displayId);
+  const container = document.getElementById('workConceptosView');
+  if (items.length === 0) { container.innerHTML = '<p class="help-text">Sin conceptos en el checklist todavía.</p>'; return; }
+  const pendientes = items.filter(c => !c.checked);
+  const marcadas = items.filter(c => c.checked);
+  container.innerHTML = `
+    <div class="section-title">Sin marcar (${pendientes.length})</div>
+    ${pendientes.length ? pendientes.map(conceptoRowHtml).join('') : '<p class="help-text">Sin tareas pendientes.</p>'}
+    <div class="section-title">Marcadas (${marcadas.length})</div>
+    ${marcadas.length ? marcadas.map(conceptoRowHtml).join('') : '<p class="help-text">Sin tareas marcadas todavía.</p>'}
+  `;
 }
 async function renderWorkConceptosEditList(obraId){
   const items = await dbGetAll('workConceptos', 'obraId', obraId);
-  items.sort((a, b) => a.displayId - b.displayId);
-  document.getElementById('workConceptosEditList').innerHTML = items.map(c => `
+  const pendientes = items.filter(c => !c.checked).sort((a, b) => a.displayId - b.displayId);
+  document.getElementById('workConceptosEditList').innerHTML = pendientes.map(c => `
     <div class="card" data-id="${c.id}" style="cursor:default;">
       <button class="icon-btn danger" data-action="delete-concepto" data-id="${c.id}">✕</button>
       <div class="card-muted" style="margin-bottom:6px;">ID ${c.displayId}</div>
@@ -4346,6 +4363,7 @@ document.getElementById('workConceptosView').addEventListener('change', async (e
   entry.checked = check.checked;
   await updateConcepto(entry);
   await renderWorkConceptosView(currentObraId);
+  await renderWorkConceptosEditList(currentObraId);
 });
 document.getElementById('workConceptosView').addEventListener('click', (e) => {
   const open = e.target.closest('.concepto-open');
