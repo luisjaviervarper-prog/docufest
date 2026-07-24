@@ -2881,23 +2881,41 @@ async function getObrasSorted(){
   obras.sort((a, b) => b.createdAt - a.createdAt);
   return obras;
 }
-async function renderWorkObrasView(){
-  const obras = await getObrasSorted();
-  const container = document.getElementById('workObrasView');
-  if (obras.length === 0) { container.innerHTML = '<p class="help-text">Sin obras añadidas todavía.</p>'; return; }
-  const allConceptos = await dbGetAll('workConceptos');
-  const pendingCounts = {};
-  allConceptos.forEach(c => { if (!c.checked) pendingCounts[c.obraId] = (pendingCounts[c.obraId] || 0) + 1; });
-  container.innerHTML = obras.map(o => {
-    const pending = pendingCounts[o.id] || 0;
-    return `
+function workObraCardHtml(o, pending){
+  return `
     <div class="card work-obra-card" data-id="${o.id}" style="cursor:pointer;">
       <div class="card-title">🏗 ${escapeHtml(o.nombre || '—')}</div>
       <div class="card-muted">${o.numeroObra ? 'Nº ' + escapeHtml(o.numeroObra) : '—'}</div>
       <div class="card-muted">${pending} tarea${pending === 1 ? '' : 's'} sin marcar</div>
     </div>
   `;
-  }).join('');
+}
+async function renderWorkObrasView(){
+  const obras = await getObrasSorted();
+  const container = document.getElementById('workObrasView');
+  if (obras.length === 0) { container.innerHTML = '<p class="help-text">Sin obras añadidas todavía.</p>'; return; }
+  const allConceptos = await dbGetAll('workConceptos');
+  const pendingCounts = {};
+  const totalCounts = {};
+  allConceptos.forEach(c => {
+    totalCounts[c.obraId] = (totalCounts[c.obraId] || 0) + 1;
+    if (!c.checked) pendingCounts[c.obraId] = (pendingCounts[c.obraId] || 0) + 1;
+  });
+  const activas = [];
+  const finalizadas = [];
+  obras.forEach(o => {
+    const total = totalCounts[o.id] || 0;
+    const pending = pendingCounts[o.id] || 0;
+    (total > 0 && pending === 0 ? finalizadas : activas).push({ obra: o, pending });
+  });
+  activas.sort((a, b) => b.pending - a.pending || b.obra.createdAt - a.obra.createdAt);
+  finalizadas.sort((a, b) => b.obra.createdAt - a.obra.createdAt);
+  container.innerHTML = `
+    <div class="section-title">Obras activas (${activas.length})</div>
+    ${activas.length ? activas.map(x => workObraCardHtml(x.obra, x.pending)).join('') : '<p class="help-text">Sin obras activas.</p>'}
+    <div class="section-title">Obras finalizadas (${finalizadas.length})</div>
+    ${finalizadas.length ? finalizadas.map(x => workObraCardHtml(x.obra, x.pending)).join('') : '<p class="help-text">Sin obras finalizadas todavía.</p>'}
+  `;
 }
 async function renderWorkObrasEditList(){
   const obras = await getObrasSorted();
