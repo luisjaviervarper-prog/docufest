@@ -459,13 +459,13 @@
             <input type="date" id="restFecha">
             <label class="field-label">País</label>
             <select id="restPais"></select>
-            <div id="restProvinciaRow">
-              <label class="field-label">Provincia</label>
-              <select id="restProvincia"></select>
-            </div>
             <div id="restComunidadRow">
               <label class="field-label">Comunidad autónoma</label>
               <select id="restComunidad"></select>
+            </div>
+            <div id="restProvinciaRow">
+              <label class="field-label">Provincia</label>
+              <select id="restProvincia"></select>
             </div>
             <label class="field-label">Precio (€)</label>
             <input type="number" step="0.01" min="0" id="restPrecio" placeholder="0,00">
@@ -1035,6 +1035,27 @@ const SPAIN_COMUNIDADES = [
   'Comunidad Valenciana', 'Extremadura', 'Galicia', 'Islas Baleares',
   'La Rioja', 'Madrid', 'Melilla', 'Murcia', 'Navarra', 'País Vasco'
 ];
+const SPAIN_COMUNIDAD_PROVINCES = {
+  'Andalucía': ['Almería', 'Cádiz', 'Córdoba', 'Granada', 'Huelva', 'Jaén', 'Málaga', 'Sevilla'],
+  'Aragón': ['Huesca', 'Teruel', 'Zaragoza'],
+  'Asturias': ['Asturias'],
+  'Canarias': ['Las Palmas', 'Santa Cruz de Tenerife'],
+  'Cantabria': ['Cantabria'],
+  'Castilla y León': ['Ávila', 'Burgos', 'León', 'Palencia', 'Salamanca', 'Segovia', 'Soria', 'Valladolid', 'Zamora'],
+  'Castilla-La Mancha': ['Albacete', 'Ciudad Real', 'Cuenca', 'Guadalajara', 'Toledo'],
+  'Cataluña': ['Barcelona', 'Girona', 'Lleida', 'Tarragona'],
+  'Ceuta': ['Ceuta'],
+  'Comunidad Valenciana': ['Alicante', 'Castellón', 'Valencia'],
+  'Extremadura': ['Badajoz', 'Cáceres'],
+  'Galicia': ['La Coruña', 'Lugo', 'Ourense', 'Pontevedra'],
+  'Islas Baleares': ['Islas Baleares'],
+  'La Rioja': ['La Rioja'],
+  'Madrid': ['Madrid'],
+  'Melilla': ['Melilla'],
+  'Murcia': ['Murcia'],
+  'Navarra': ['Navarra'],
+  'País Vasco': ['Álava', 'Guipúzcoa', 'Vizcaya']
+};
 const CUSTOM_COUNTRIES_KEY = 'docufest_custom_countries';
 function getCustomCountries(){
   try { return JSON.parse(localStorage.getItem(CUSTOM_COUNTRIES_KEY) || '[]'); }
@@ -1057,8 +1078,9 @@ function buildCountryOptionsHtml(selected){
   ).join('');
   return opts + `<option value="__new__">+ Añadir país nuevo…</option>`;
 }
-function buildProvinceOptionsHtml(selected){
-  return SPAIN_PROVINCES.map(p =>
+function buildProvinceOptionsHtml(comunidad, selected){
+  const list = SPAIN_COMUNIDAD_PROVINCES[comunidad] || SPAIN_PROVINCES;
+  return list.map(p =>
     `<option value="${escapeHtml(p)}" ${p === selected ? 'selected' : ''}>${escapeHtml(p)}</option>`
   ).join('');
 }
@@ -2062,8 +2084,8 @@ function sortRestaurantEntries(entries){
 }
 function populateRestAddFormCountrySelects(){
   document.getElementById('restPais').innerHTML = buildCountryOptionsHtml('España');
-  document.getElementById('restProvincia').innerHTML = buildProvinceOptionsHtml('');
-  document.getElementById('restComunidad').innerHTML = buildComunidadOptionsHtml('');
+  document.getElementById('restComunidad').innerHTML = buildComunidadOptionsHtml('Galicia');
+  document.getElementById('restProvincia').innerHTML = buildProvinceOptionsHtml('Galicia', 'La Coruña');
   document.getElementById('restProvinciaRow').style.display = 'block';
   document.getElementById('restComunidadRow').style.display = 'block';
 }
@@ -2120,13 +2142,13 @@ async function renderRestaurantEditList(tripId){
         <input type="date" class="rest-input" data-field="fecha" data-id="${r.id}" value="${r.fecha || ''}">
         <label class="field-label">País</label>
         <select class="rest-input rest-pais-select" data-field="pais" data-id="${r.id}">${buildCountryOptionsHtml(pais)}</select>
-        <div class="rest-provincia-row" data-id="${r.id}" style="display:${isSpain ? 'block' : 'none'};">
-          <label class="field-label">Provincia</label>
-          <select class="rest-input" data-field="provincia" data-id="${r.id}">${buildProvinceOptionsHtml(r.provincia || '')}</select>
-        </div>
         <div class="rest-comunidad-row" data-id="${r.id}" style="display:${isSpain ? 'block' : 'none'};">
           <label class="field-label">Comunidad autónoma</label>
-          <select class="rest-input" data-field="comunidad" data-id="${r.id}">${buildComunidadOptionsHtml(r.comunidad || '')}</select>
+          <select class="rest-input rest-comunidad-select" data-field="comunidad" data-id="${r.id}">${buildComunidadOptionsHtml(r.comunidad || 'Galicia')}</select>
+        </div>
+        <div class="rest-provincia-row" data-id="${r.id}" style="display:${isSpain ? 'block' : 'none'};">
+          <label class="field-label">Provincia</label>
+          <select class="rest-input" data-field="provincia" data-id="${r.id}">${buildProvinceOptionsHtml(r.comunidad || 'Galicia', r.provincia || '')}</select>
         </div>
         <label class="field-label">Precio (€)</label>
         <input type="number" step="0.01" min="0" class="rest-input" data-field="precio" data-id="${r.id}" value="${r.precio}">
@@ -3504,6 +3526,11 @@ document.getElementById('restPais').addEventListener('change', (e) => {
   document.getElementById('restProvinciaRow').style.display = isSpain ? 'block' : 'none';
   document.getElementById('restComunidadRow').style.display = isSpain ? 'block' : 'none';
 });
+document.getElementById('restComunidad').addEventListener('change', (e) => {
+  const comunidad = e.target.value;
+  const list = SPAIN_COMUNIDAD_PROVINCES[comunidad] || SPAIN_PROVINCES;
+  document.getElementById('restProvincia').innerHTML = buildProvinceOptionsHtml(comunidad, list[0]);
+});
 document.getElementById('btnAddRestaurant').addEventListener('click', async () => {
   const concepto = document.getElementById('restConcepto').value.trim();
   const fecha = document.getElementById('restFecha').value;
@@ -3552,6 +3579,22 @@ document.getElementById('restaurantEditList').addEventListener('change', async (
     const comRow = document.querySelector(`.rest-comunidad-row[data-id="${id}"]`);
     if (provRow) provRow.style.display = isSpain ? 'block' : 'none';
     if (comRow) comRow.style.display = isSpain ? 'block' : 'none';
+    await renderRestaurantView(currentTripId);
+    return;
+  }
+  const comunidadSelect = e.target.closest('.rest-comunidad-select');
+  if (comunidadSelect) {
+    const id = comunidadSelect.dataset.id;
+    const comunidad = comunidadSelect.value;
+    const list = SPAIN_COMUNIDAD_PROVINCES[comunidad] || SPAIN_PROVINCES;
+    const entry = await dbGet('restaurantEntries', id);
+    if (entry) {
+      entry.comunidad = comunidad;
+      entry.provincia = list[0];
+      await updateRestaurantEntry(entry);
+    }
+    const provinciaSelect = document.querySelector(`.rest-provincia-row[data-id="${id}"] select`);
+    if (provinciaSelect) provinciaSelect.innerHTML = buildProvinceOptionsHtml(comunidad, list[0]);
     await renderRestaurantView(currentTripId);
     return;
   }
