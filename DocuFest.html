@@ -239,6 +239,7 @@
         <button class="btn-outline" id="btnVacations">🏖 Vacaciones</button>
         <button class="btn-outline" id="btnReadings">📚 Lecturas</button>
         <button class="btn-outline" id="btnCar">🚗 Coche</button>
+        <button class="btn-outline" id="btnWork">🛠 Trabajo</button>
         <button class="btn-outline" id="btnExportFullBackup">💾 Exportar todos los datos</button>
         <button class="btn-outline" id="btnImportFullBackup">📥 Importar datos</button>
         <input type="file" id="fullBackupImportInput" accept=".dfbackup,application/octet-stream,*/*" style="display:none">
@@ -407,6 +408,8 @@
           <div class="tile" style="padding:14px;">
             <label class="field-label">Concepto</label>
             <input type="text" id="expenseConcepto" placeholder="Ej. Cena, taxi...">
+            <label class="field-label">Fecha</label>
+            <input type="date" id="expenseFecha">
             <label class="field-label">Ubicación</label>
             <input type="text" id="expenseUbicacion" list="ubicacionesDatalist" placeholder="Ej. Roma">
             <datalist id="ubicacionesDatalist"></datalist>
@@ -423,10 +426,17 @@
             <input type="number" step="0.01" min="0" id="expenseCoste" placeholder="0,00">
             <label class="field-label">Observaciones</label>
             <input type="text" id="expenseObservaciones" placeholder="Opcional">
+            <div style="display:flex; gap:8px;">
+              <button class="btn-outline" id="btnAddExpensePhotoGallery" style="flex:1;">🖼 Foto ticket</button>
+              <button class="btn-outline" id="btnAddExpensePhotoCamera" style="flex:1;">📷 Cámara</button>
+            </div>
+            <div class="help-text" id="expensePhotoStatus" style="margin:-4px 0 8px;"></div>
             <button class="btn-ember" id="btnAddExpense" style="margin-top:4px;">＋ Añadir gasto</button>
           </div>
           <div id="expensesEditList"></div>
         </div>
+        <input type="file" id="expensePhotoFileInput" accept="image/*" style="display:none">
+        <input type="file" id="expensePhotoCameraInput" accept="image/*" capture="environment" style="display:none">
         <button class="btn-outline" id="btnToggleExpensesEdit">✏️ Modificar gastos</button>
 
         <div class="section-title">Tickets</div>
@@ -751,6 +761,66 @@
     </div>
   </section>
 
+  <!-- ===================== TRABAJO: OBRAS ===================== -->
+  <section id="screen-work-home" class="screen">
+    <div class="topbar">
+      <button class="icon-btn" onclick="history.back()">←</button>
+      <h1>🛠 Trabajo</h1>
+    </div>
+    <div class="content">
+      <div class="section-title">Obras</div>
+      <div id="workObrasView"></div>
+      <div id="workObrasEdit" style="display:none;">
+        <div class="tile" style="padding:14px;">
+          <label class="field-label">Nombre</label>
+          <input type="text" id="workObraNombre" placeholder="Ej. Reforma local Vigo">
+          <label class="field-label">Número de obra</label>
+          <input type="text" id="workObraNumero" placeholder="Ej. OB-2026-014">
+          <button class="btn-ember" id="btnAddWorkObra" style="margin-top:4px;">＋ Añadir obra</button>
+        </div>
+        <div id="workObrasEditList"></div>
+      </div>
+      <button class="btn-outline" id="btnToggleWorkObrasEdit">✏️ Modificar</button>
+    </div>
+  </section>
+
+  <!-- ===================== TRABAJO: CHECKLIST DE OBRA ===================== -->
+  <section id="screen-work-obra-detail" class="screen">
+    <div class="topbar">
+      <button class="icon-btn" onclick="history.back()">←</button>
+      <h1 id="workObraDetailTitle">Obra</h1>
+    </div>
+    <div class="content">
+      <div class="card-muted" id="workObraDetailSubtitle" style="margin-bottom:10px;"></div>
+      <div id="workConceptosView"></div>
+      <div id="workConceptosEdit" style="display:none;">
+        <div class="tile" style="padding:14px;">
+          <label class="field-label">Concepto</label>
+          <input type="text" id="workConceptoNombre" placeholder="Ej. Instalación eléctrica">
+          <button class="btn-ember" id="btnAddWorkConcepto" style="margin-top:4px;">＋ Añadir concepto</button>
+        </div>
+        <div id="workConceptosEditList"></div>
+      </div>
+      <button class="btn-outline" id="btnToggleWorkConceptosEdit">✏️ Modificar</button>
+    </div>
+  </section>
+
+  <!-- ===================== TRABAJO: OBSERVACIONES DE CONCEPTO ===================== -->
+  <section id="screen-work-concepto-detail" class="screen">
+    <div class="topbar">
+      <button class="icon-btn" onclick="history.back()">←</button>
+      <h1 id="workConceptoDetailTitle">Concepto</h1>
+    </div>
+    <div class="content">
+      <div class="tile" style="padding:14px;">
+        <label class="field-label">Nueva observación</label>
+        <input type="text" id="workObservacionTexto" placeholder="Escribe una observación...">
+        <button class="btn-ember" id="btnAddWorkObservacion" style="margin-top:4px;">＋ Añadir observación</button>
+      </div>
+      <div id="workObservacionesList"></div>
+    </div>
+  </section>
+
   <!-- ===================== MODAL: VISOR DE DOCUMENTO ===================== -->
   <div class="modal-overlay" id="modalViewer">
     <div class="modal-sheet">
@@ -798,7 +868,7 @@
 /* ---------- IndexedDB helpers ---------- */
 function openDb(){
   return new Promise((resolve, reject) => {
-    const req = indexedDB.open('docufest_db', 10);
+    const req = indexedDB.open('docufest_db', 11);
     req.onupgradeneeded = (e) => {
       const db = e.target.result;
       if (!db.objectStoreNames.contains('profiles')) {
@@ -870,6 +940,17 @@ function openDb(){
       }
       if (!db.objectStoreNames.contains('vehicles')) {
         db.createObjectStore('vehicles', { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains('workObras')) {
+        db.createObjectStore('workObras', { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains('workConceptos')) {
+        const s = db.createObjectStore('workConceptos', { keyPath: 'id' });
+        s.createIndex('obraId', 'obraId', { unique: false });
+      }
+      if (!db.objectStoreNames.contains('workObservaciones')) {
+        const s = db.createObjectStore('workObservaciones', { keyPath: 'id' });
+        s.createIndex('conceptoId', 'conceptoId', { unique: false });
       }
     };
     req.onsuccess = () => resolve(req.result);
@@ -1107,8 +1188,12 @@ async function deleteTripCascade(tripId){
   await dbDeleteWhere('restaurantEntries', 'tripId', tripId);
   await dbDelete('trips', tripId);
 }
-async function addExpense(tripId, data){
-  const expense = { id: uuid(), tripId, ...data, createdAt: Date.now() };
+async function addExpense(tripId, data, file){
+  const expense = {
+    id: uuid(), tripId, ...data,
+    photoBlob: file || null, mimeType: file ? file.type : null,
+    createdAt: Date.now()
+  };
   await dbPut('tripExpenses', expense);
   return expense;
 }
@@ -1702,6 +1787,7 @@ let expensesEditMode = false;
 let ticketsEditMode = false;
 let restaurantEditMode = false;
 let pendingRestPhoto = null;
+let pendingExpensePhoto = null;
 let vacationEditMode = false;
 let festivoEditMode = false;
 let permisoEditMode = false;
@@ -1718,6 +1804,10 @@ let carFuelVehicleFilter = 'all';
 let carInsuranceVehicleFilter = 'all';
 let carGarageVehicleFilter = 'all';
 let vehiclesEditMode = false;
+let currentObraId = null;
+let currentConceptoId = null;
+let workObrasEditMode = false;
+let workConceptosEditMode = false;
 
 function go(view, params = {}){
   const state = { view, ...params };
@@ -1730,6 +1820,8 @@ async function applyState(state){
   currentProfileId = state.profileId || null;
   currentCategoryId = state.categoryId || null;
   currentTripId = state.tripId || null;
+  currentObraId = state.obraId || null;
+  currentConceptoId = state.conceptoId || null;
   document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
   const el = document.getElementById('screen-' + state.view);
   if (el) el.classList.add('active');
@@ -1750,6 +1842,9 @@ async function applyState(state){
   if (state.view === 'car-fuel-detail') { currentCarFuelYearKey = state.yearKey; await renderCarFuelDetail(state.yearKey); }
   if (state.view === 'car-insurance') await renderCarInsuranceScreen();
   if (state.view === 'car-garage') await renderCarGarageScreen();
+  if (state.view === 'work-home') await renderWorkObrasScreen();
+  if (state.view === 'work-obra-detail') await renderWorkObraDetail(currentObraId);
+  if (state.view === 'work-concepto-detail') await renderWorkConceptoDetail(currentConceptoId);
 }
 
 /* ---------- render: bienvenida ---------- */
@@ -2006,27 +2101,45 @@ async function renderExpensesView(tripId){
   expenses.sort((a,b) => b.createdAt - a.createdAt);
   const container = document.getElementById('expensesView');
   if (expenses.length === 0) { container.innerHTML = '<p class="help-text">Sin gastos añadidos todavía.</p>'; return; }
-  container.innerHTML = expenses.map(e => `
+  container.innerHTML = expenses.map(e => {
+    let thumb = '';
+    if (e.photoBlob) {
+      const url = URL.createObjectURL(e.photoBlob);
+      objectUrlsToRevoke.push(url);
+      thumb = `<img src="${url}" class="exp-thumb" style="width:100%; border-radius:6px; margin-top:8px; cursor:pointer;">`;
+    }
+    return `
     <div class="card" style="cursor:default;">
       <div style="display:flex; justify-content:space-between; gap:8px;">
         <span class="card-title">${escapeHtml(e.concepto)}</span>
         <span class="card-title" style="color:var(--accent-ember);">${Number(e.coste).toFixed(2)} €</span>
       </div>
-      <div class="card-muted">${escapeHtml(e.ubicacion || '—')} · ${escapeHtml(e.tipo)}</div>
+      <div class="card-muted">${e.fecha ? escapeHtml(formatDateRange(e.fecha, e.fecha)) + ' · ' : ''}${escapeHtml(e.ubicacion || '—')} · ${escapeHtml(e.tipo)}</div>
       ${e.observaciones ? `<div class="card-muted">${escapeHtml(e.observaciones)}</div>` : ''}
+      ${thumb}
     </div>
-  `).join('');
+  `;
+  }).join('');
 }
 async function renderExpensesEditList(tripId){
   const expenses = await dbGetAll('tripExpenses', 'tripId', tripId);
   expenses.sort((a,b) => b.createdAt - a.createdAt);
   const locations = [...new Set(expenses.map(e => e.ubicacion).filter(Boolean))];
   document.getElementById('ubicacionesDatalist').innerHTML = locations.map(l => `<option value="${escapeHtml(l)}">`).join('');
-  document.getElementById('expensesEditList').innerHTML = expenses.map(e => `
+  document.getElementById('expensesEditList').innerHTML = expenses.map(e => {
+    let thumb = '';
+    if (e.photoBlob) {
+      const url = URL.createObjectURL(e.photoBlob);
+      objectUrlsToRevoke.push(url);
+      thumb = `<img src="${url}" style="width:100%; border-radius:6px; margin:8px 0;">`;
+    }
+    return `
     <div class="card" data-id="${e.id}" style="cursor:default;">
       <button class="icon-btn danger" data-action="delete-expense" data-id="${e.id}">✕</button>
       <label class="field-label">Concepto</label>
       <input type="text" class="exp-input" data-field="concepto" data-id="${e.id}" value="${escapeHtml(e.concepto)}">
+      <label class="field-label">Fecha</label>
+      <input type="date" class="exp-input" data-field="fecha" data-id="${e.id}" value="${e.fecha || ''}">
       <label class="field-label">Ubicación</label>
       <input type="text" class="exp-input" data-field="ubicacion" data-id="${e.id}" list="ubicacionesDatalist" value="${escapeHtml(e.ubicacion || '')}">
       <label class="field-label">Tipo</label>
@@ -2037,8 +2150,10 @@ async function renderExpensesEditList(tripId){
       <input type="number" step="0.01" min="0" class="exp-input" data-field="coste" data-id="${e.id}" value="${e.coste}">
       <label class="field-label">Observaciones</label>
       <input type="text" class="exp-input" data-field="observaciones" data-id="${e.id}" value="${escapeHtml(e.observaciones || '')}">
+      ${thumb}
     </div>
-  `).join('');
+  `;
+  }).join('');
 }
 
 /* ---------- render: tickets del viaje ---------- */
@@ -2746,6 +2861,139 @@ async function renderCarGarageScreen(){
   await renderCarGarageEditList();
 }
 
+/* ---------- Trabajo: Obras ---------- */
+async function addObra(data){
+  const obra = { id: uuid(), ...data, createdAt: Date.now() };
+  await dbPut('workObras', obra);
+  return obra;
+}
+async function updateObra(obra){ await dbPut('workObras', obra); }
+async function deleteObraCascade(id){
+  const conceptos = await dbGetAll('workConceptos', 'obraId', id);
+  for (const c of conceptos) {
+    await dbDeleteWhere('workObservaciones', 'conceptoId', c.id);
+  }
+  await dbDeleteWhere('workConceptos', 'obraId', id);
+  await dbDelete('workObras', id);
+}
+async function getObrasSorted(){
+  const obras = await dbGetAll('workObras');
+  obras.sort((a, b) => b.createdAt - a.createdAt);
+  return obras;
+}
+async function renderWorkObrasView(){
+  const obras = await getObrasSorted();
+  const container = document.getElementById('workObrasView');
+  if (obras.length === 0) { container.innerHTML = '<p class="help-text">Sin obras añadidas todavía.</p>'; return; }
+  container.innerHTML = obras.map(o => `
+    <div class="card work-obra-card" data-id="${o.id}" style="cursor:pointer;">
+      <div class="card-title">🏗 ${escapeHtml(o.nombre || '—')}</div>
+      <div class="card-muted">${o.numeroObra ? 'Nº ' + escapeHtml(o.numeroObra) : '—'}</div>
+    </div>
+  `).join('');
+}
+async function renderWorkObrasEditList(){
+  const obras = await getObrasSorted();
+  document.getElementById('workObrasEditList').innerHTML = obras.map(o => `
+    <div class="card" data-id="${o.id}" style="cursor:default;">
+      <button class="icon-btn danger" data-action="delete-obra" data-id="${o.id}">✕</button>
+      <label class="field-label">Nombre</label>
+      <input type="text" class="obra-input" data-field="nombre" data-id="${o.id}" value="${escapeHtml(o.nombre || '')}">
+      <label class="field-label">Número de obra</label>
+      <input type="text" class="obra-input" data-field="numeroObra" data-id="${o.id}" value="${escapeHtml(o.numeroObra || '')}">
+    </div>
+  `).join('');
+}
+async function renderWorkObrasScreen(){
+  workObrasEditMode = false;
+  document.getElementById('workObrasView').style.display = 'block';
+  document.getElementById('workObrasEdit').style.display = 'none';
+  document.getElementById('btnToggleWorkObrasEdit').textContent = '✏️ Modificar';
+  await renderWorkObrasView();
+  await renderWorkObrasEditList();
+}
+
+/* ---------- Trabajo: checklist de conceptos ---------- */
+async function getNextConceptoDisplayId(obraId){
+  const all = await dbGetAll('workConceptos', 'obraId', obraId);
+  return all.reduce((max, c) => Math.max(max, c.displayId || 0), 0) + 1;
+}
+async function addConcepto(obraId, concepto){
+  const displayId = await getNextConceptoDisplayId(obraId);
+  const entry = { id: uuid(), obraId, displayId, concepto, checked: false, createdAt: Date.now() };
+  await dbPut('workConceptos', entry);
+  return entry;
+}
+async function updateConcepto(entry){ await dbPut('workConceptos', entry); }
+async function deleteConceptoCascade(id){
+  await dbDeleteWhere('workObservaciones', 'conceptoId', id);
+  await dbDelete('workConceptos', id);
+}
+async function renderWorkConceptosView(obraId){
+  const items = await dbGetAll('workConceptos', 'obraId', obraId);
+  items.sort((a, b) => a.displayId - b.displayId);
+  const container = document.getElementById('workConceptosView');
+  if (items.length === 0) { container.innerHTML = '<p class="help-text">Sin conceptos en el checklist todavía.</p>'; return; }
+  container.innerHTML = items.map(c => `
+    <div class="card" data-id="${c.id}" style="cursor:default; display:flex; align-items:center; gap:10px;">
+      <input type="checkbox" class="concepto-check" data-id="${c.id}" ${c.checked ? 'checked' : ''} style="width:20px; height:20px; flex-shrink:0;">
+      <div class="concepto-open" data-id="${c.id}" style="flex:1; cursor:pointer;">
+        <span class="card-title" style="${c.checked ? 'text-decoration:line-through; opacity:0.6;' : ''}">#${c.displayId} ${escapeHtml(c.concepto || '')}</span>
+      </div>
+    </div>
+  `).join('');
+}
+async function renderWorkConceptosEditList(obraId){
+  const items = await dbGetAll('workConceptos', 'obraId', obraId);
+  items.sort((a, b) => a.displayId - b.displayId);
+  document.getElementById('workConceptosEditList').innerHTML = items.map(c => `
+    <div class="card" data-id="${c.id}" style="cursor:default;">
+      <button class="icon-btn danger" data-action="delete-concepto" data-id="${c.id}">✕</button>
+      <div class="card-muted" style="margin-bottom:6px;">ID ${c.displayId}</div>
+      <label class="field-label">Concepto</label>
+      <input type="text" class="concepto-input" data-field="concepto" data-id="${c.id}" value="${escapeHtml(c.concepto || '')}">
+    </div>
+  `).join('');
+}
+async function renderWorkObraDetail(obraId){
+  const obra = await dbGet('workObras', obraId);
+  if (!obra) return;
+  document.getElementById('workObraDetailTitle').textContent = obra.nombre || 'Obra';
+  document.getElementById('workObraDetailSubtitle').textContent = obra.numeroObra ? 'Nº ' + obra.numeroObra : '';
+  workConceptosEditMode = false;
+  document.getElementById('workConceptosView').style.display = 'block';
+  document.getElementById('workConceptosEdit').style.display = 'none';
+  document.getElementById('btnToggleWorkConceptosEdit').textContent = '✏️ Modificar';
+  await renderWorkConceptosView(obraId);
+  await renderWorkConceptosEditList(obraId);
+}
+
+/* ---------- Trabajo: observaciones de un concepto ---------- */
+async function addObservacion(conceptoId, texto){
+  const entry = { id: uuid(), conceptoId, texto, createdAt: Date.now() };
+  await dbPut('workObservaciones', entry);
+  return entry;
+}
+async function deleteObservacion(id){ await dbDelete('workObservaciones', id); }
+async function renderWorkObservacionesList(conceptoId){
+  const items = await dbGetAll('workObservaciones', 'conceptoId', conceptoId);
+  items.sort((a, b) => b.createdAt - a.createdAt);
+  const container = document.getElementById('workObservacionesList');
+  if (items.length === 0) { container.innerHTML = '<p class="help-text">Sin observaciones todavía.</p>'; return; }
+  container.innerHTML = items.map(o => `
+    <div class="card" data-id="${o.id}" style="cursor:default;">
+      <button class="icon-btn danger" data-action="delete-observacion" data-id="${o.id}">✕</button>
+      <div>${escapeHtml(o.texto || '')}</div>
+    </div>
+  `).join('');
+}
+async function renderWorkConceptoDetail(conceptoId){
+  const concepto = await dbGet('workConceptos', conceptoId);
+  document.getElementById('workConceptoDetailTitle').textContent = concepto ? (concepto.concepto || 'Concepto') : 'Concepto';
+  document.getElementById('workObservacionTexto').value = '';
+  await renderWorkObservacionesList(conceptoId);
+}
+
 /* ---------- Copia de seguridad completa (protegida con PIN) ----------
    Exporta TODOS los almacenes de la app (perfiles, documentos, viajes,
    vacaciones, lecturas, coche, etc.) en un único archivo cifrado, pensado
@@ -2759,11 +3007,13 @@ const FULL_BACKUP_STORES = [
   'trips', 'tripExpenses', 'tripTickets', 'restaurantEntries',
   'vacationYears', 'vacationDays', 'holidayDays', 'permisoDays', 'lactanciaDays', 'annotations',
   'readings', 'readingYears',
-  'carFuelEntries', 'carFuelYears', 'carInsuranceEntries', 'carGarageEntries', 'vehicles'
+  'carFuelEntries', 'carFuelYears', 'carInsuranceEntries', 'carGarageEntries', 'vehicles',
+  'workObras', 'workConceptos', 'workObservaciones'
 ];
 const FULL_BACKUP_BLOB_FIELDS = {
   documents: 'blob',
   tripTickets: 'photoBlob',
+  tripExpenses: 'photoBlob',
   restaurantEntries: 'photoBlob'
 };
 /* El cifrado (Web Crypto / crypto.subtle) solo está disponible en "contextos
@@ -3413,21 +3663,38 @@ document.getElementById('btnAddTrip').addEventListener('click', async () => {
 });
 
 /* ---------- eventos: gastos ---------- */
+function handleExpensePhotoSelected(file){
+  if (!file) return;
+  pendingExpensePhoto = file;
+  document.getElementById('expensePhotoStatus').textContent = 'Foto del ticket añadida ✓';
+}
+document.getElementById('btnAddExpensePhotoGallery').addEventListener('click', () => document.getElementById('expensePhotoFileInput').click());
+document.getElementById('btnAddExpensePhotoCamera').addEventListener('click', () => document.getElementById('expensePhotoCameraInput').click());
+document.getElementById('expensePhotoFileInput').addEventListener('change', (e) => { handleExpensePhotoSelected(e.target.files[0]); e.target.value = ''; });
+document.getElementById('expensePhotoCameraInput').addEventListener('change', (e) => { handleExpensePhotoSelected(e.target.files[0]); e.target.value = ''; });
 document.getElementById('btnAddExpense').addEventListener('click', async () => {
   const concepto = document.getElementById('expenseConcepto').value.trim();
+  const fecha = document.getElementById('expenseFecha').value;
   const ubicacion = document.getElementById('expenseUbicacion').value.trim();
   const tipo = document.getElementById('expenseTipo').value;
   const coste = parseFloat(document.getElementById('expenseCoste').value) || 0;
   const observaciones = document.getElementById('expenseObservaciones').value.trim();
   if (!concepto) { alert('Escribe al menos el concepto.'); return; }
-  await addExpense(currentTripId, { concepto, ubicacion, tipo, coste, observaciones });
+  await addExpense(currentTripId, { concepto, fecha, ubicacion, tipo, coste, observaciones }, pendingExpensePhoto);
+  pendingExpensePhoto = null;
   document.getElementById('expenseConcepto').value = '';
+  document.getElementById('expenseFecha').value = '';
   document.getElementById('expenseUbicacion').value = '';
   document.getElementById('expenseCoste').value = '';
   document.getElementById('expenseObservaciones').value = '';
+  document.getElementById('expensePhotoStatus').textContent = '';
   await renderExpensesTotal(currentTripId);
   await renderExpensesView(currentTripId);
   await renderExpensesEditList(currentTripId);
+});
+document.getElementById('expensesView').addEventListener('click', (e) => {
+  const img = e.target.closest('.exp-thumb');
+  if (img) window.open(img.src, '_blank');
 });
 document.getElementById('expensesEditList').addEventListener('change', async (e) => {
   const input = e.target.closest('.exp-input');
@@ -4018,6 +4285,113 @@ document.getElementById('btnToggleCarGarageEdit').addEventListener('click', () =
   document.getElementById('carGarageView').style.display = carGarageEditMode ? 'none' : 'block';
   document.getElementById('carGarageEdit').style.display = carGarageEditMode ? 'block' : 'none';
   document.getElementById('btnToggleCarGarageEdit').textContent = carGarageEditMode ? '✅ Cerrar edición' : '✏️ Modificar';
+});
+
+/* ---------- eventos: Trabajo ---------- */
+document.getElementById('btnWork').addEventListener('click', () => go('work-home'));
+
+document.getElementById('btnAddWorkObra').addEventListener('click', async () => {
+  const nombre = document.getElementById('workObraNombre').value.trim();
+  const numeroObra = document.getElementById('workObraNumero').value.trim();
+  if (!nombre) { alert('Escribe al menos el nombre de la obra.'); return; }
+  await addObra({ nombre, numeroObra });
+  document.getElementById('workObraNombre').value = '';
+  document.getElementById('workObraNumero').value = '';
+  await renderWorkObrasView();
+  await renderWorkObrasEditList();
+});
+document.getElementById('workObrasEditList').addEventListener('change', async (e) => {
+  const input = e.target.closest('.obra-input');
+  if (!input) return;
+  const obra = await dbGet('workObras', input.dataset.id);
+  if (!obra) return;
+  obra[input.dataset.field] = input.value;
+  await updateObra(obra);
+  await renderWorkObrasView();
+});
+document.getElementById('workObrasEditList').addEventListener('click', async (e) => {
+  const delBtn = e.target.closest('[data-action="delete-obra"]');
+  if (delBtn) {
+    if (confirm('¿Eliminar esta obra y todo su checklist y observaciones? No se puede deshacer.')) {
+      await deleteObraCascade(delBtn.dataset.id);
+      await renderWorkObrasView();
+      await renderWorkObrasEditList();
+    }
+  }
+});
+document.getElementById('btnToggleWorkObrasEdit').addEventListener('click', () => {
+  workObrasEditMode = !workObrasEditMode;
+  document.getElementById('workObrasView').style.display = workObrasEditMode ? 'none' : 'block';
+  document.getElementById('workObrasEdit').style.display = workObrasEditMode ? 'block' : 'none';
+  document.getElementById('btnToggleWorkObrasEdit').textContent = workObrasEditMode ? '✅ Cerrar edición' : '✏️ Modificar';
+});
+document.getElementById('workObrasView').addEventListener('click', (e) => {
+  const card = e.target.closest('.work-obra-card');
+  if (card) go('work-obra-detail', { obraId: card.dataset.id });
+});
+
+document.getElementById('btnAddWorkConcepto').addEventListener('click', async () => {
+  const concepto = document.getElementById('workConceptoNombre').value.trim();
+  if (!concepto) { alert('Escribe al menos el concepto.'); return; }
+  await addConcepto(currentObraId, concepto);
+  document.getElementById('workConceptoNombre').value = '';
+  await renderWorkConceptosView(currentObraId);
+  await renderWorkConceptosEditList(currentObraId);
+});
+document.getElementById('workConceptosView').addEventListener('change', async (e) => {
+  const check = e.target.closest('.concepto-check');
+  if (!check) return;
+  const entry = await dbGet('workConceptos', check.dataset.id);
+  if (!entry) return;
+  entry.checked = check.checked;
+  await updateConcepto(entry);
+  await renderWorkConceptosView(currentObraId);
+});
+document.getElementById('workConceptosView').addEventListener('click', (e) => {
+  const open = e.target.closest('.concepto-open');
+  if (open) go('work-concepto-detail', { conceptoId: open.dataset.id });
+});
+document.getElementById('workConceptosEditList').addEventListener('change', async (e) => {
+  const input = e.target.closest('.concepto-input');
+  if (!input) return;
+  const entry = await dbGet('workConceptos', input.dataset.id);
+  if (!entry) return;
+  entry[input.dataset.field] = input.value;
+  await updateConcepto(entry);
+  await renderWorkConceptosView(currentObraId);
+});
+document.getElementById('workConceptosEditList').addEventListener('click', async (e) => {
+  const delBtn = e.target.closest('[data-action="delete-concepto"]');
+  if (delBtn) {
+    if (confirm('¿Eliminar este concepto y sus observaciones?')) {
+      await deleteConceptoCascade(delBtn.dataset.id);
+      await renderWorkConceptosView(currentObraId);
+      await renderWorkConceptosEditList(currentObraId);
+    }
+  }
+});
+document.getElementById('btnToggleWorkConceptosEdit').addEventListener('click', () => {
+  workConceptosEditMode = !workConceptosEditMode;
+  document.getElementById('workConceptosView').style.display = workConceptosEditMode ? 'none' : 'block';
+  document.getElementById('workConceptosEdit').style.display = workConceptosEditMode ? 'block' : 'none';
+  document.getElementById('btnToggleWorkConceptosEdit').textContent = workConceptosEditMode ? '✅ Cerrar edición' : '✏️ Modificar';
+});
+
+document.getElementById('btnAddWorkObservacion').addEventListener('click', async () => {
+  const texto = document.getElementById('workObservacionTexto').value.trim();
+  if (!texto) { alert('Escribe una observación.'); return; }
+  await addObservacion(currentConceptoId, texto);
+  document.getElementById('workObservacionTexto').value = '';
+  await renderWorkObservacionesList(currentConceptoId);
+});
+document.getElementById('workObservacionesList').addEventListener('click', async (e) => {
+  const delBtn = e.target.closest('[data-action="delete-observacion"]');
+  if (delBtn) {
+    if (confirm('¿Eliminar esta observación?')) {
+      await deleteObservacion(delBtn.dataset.id);
+      await renderWorkObservacionesList(currentConceptoId);
+    }
+  }
 });
 
 /* ---------- arranque ---------- */
