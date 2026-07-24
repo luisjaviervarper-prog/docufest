@@ -453,8 +453,20 @@
         <div id="restaurantView"></div>
         <div id="restaurantEdit" style="display:none;">
           <div class="tile" style="padding:14px;">
-            <label class="field-label">Concepto</label>
+            <label class="field-label">Concepto (nombre del restaurante)</label>
             <input type="text" id="restConcepto" placeholder="Ej. Trattoria da Mario">
+            <label class="field-label">Fecha</label>
+            <input type="date" id="restFecha">
+            <label class="field-label">País</label>
+            <select id="restPais"></select>
+            <div id="restProvinciaRow">
+              <label class="field-label">Provincia</label>
+              <select id="restProvincia"></select>
+            </div>
+            <div id="restComunidadRow">
+              <label class="field-label">Comunidad autónoma</label>
+              <select id="restComunidad"></select>
+            </div>
             <label class="field-label">Precio (€)</label>
             <input type="number" step="0.01" min="0" id="restPrecio" placeholder="0,00">
             <label class="field-label">Nº personas</label>
@@ -994,6 +1006,67 @@ async function deleteField(fieldId){
 
 /* ---------- Viajes ---------- */
 const TRIP_EXPENSE_TYPES = ['Alojamiento', 'Restauración', 'Entradas', 'Gasoil', 'Avión', 'Varios'];
+
+/* ---------- Restaurantes: país / provincia / comunidad ---------- */
+const EUROPEAN_COUNTRIES = [
+  'Albania', 'Alemania', 'Andorra', 'Austria', 'Bélgica', 'Bielorrusia',
+  'Bosnia y Herzegovina', 'Bulgaria', 'Chipre', 'Croacia', 'Dinamarca',
+  'Eslovaquia', 'Eslovenia', 'España', 'Estonia', 'Finlandia', 'Francia',
+  'Grecia', 'Hungría', 'Irlanda', 'Islandia', 'Italia', 'Kosovo', 'Letonia',
+  'Liechtenstein', 'Lituania', 'Luxemburgo', 'Macedonia del Norte', 'Malta',
+  'Moldavia', 'Mónaco', 'Montenegro', 'Noruega', 'Países Bajos', 'Polonia',
+  'Portugal', 'Reino Unido', 'República Checa', 'Rumanía', 'San Marino',
+  'Serbia', 'Suecia', 'Suiza', 'Ucrania', 'Vaticano'
+];
+const SPAIN_PROVINCES = [
+  'Álava', 'Albacete', 'Alicante', 'Almería', 'Asturias', 'Ávila', 'Badajoz',
+  'Barcelona', 'Burgos', 'Cáceres', 'Cádiz', 'Cantabria', 'Castellón',
+  'Ceuta', 'Ciudad Real', 'Córdoba', 'Cuenca', 'Girona', 'Granada',
+  'Guadalajara', 'Guipúzcoa', 'Huelva', 'Huesca', 'Islas Baleares', 'Jaén',
+  'La Coruña', 'La Rioja', 'Las Palmas', 'León', 'Lleida', 'Lugo', 'Madrid',
+  'Málaga', 'Melilla', 'Murcia', 'Navarra', 'Ourense', 'Palencia',
+  'Pontevedra', 'Salamanca', 'Santa Cruz de Tenerife', 'Segovia', 'Sevilla',
+  'Soria', 'Tarragona', 'Teruel', 'Toledo', 'Valencia', 'Valladolid',
+  'Vizcaya', 'Zamora', 'Zaragoza'
+];
+const SPAIN_COMUNIDADES = [
+  'Andalucía', 'Aragón', 'Asturias', 'Canarias', 'Cantabria',
+  'Castilla y León', 'Castilla-La Mancha', 'Cataluña', 'Ceuta',
+  'Comunidad Valenciana', 'Extremadura', 'Galicia', 'Islas Baleares',
+  'La Rioja', 'Madrid', 'Melilla', 'Murcia', 'Navarra', 'País Vasco'
+];
+const CUSTOM_COUNTRIES_KEY = 'docufest_custom_countries';
+function getCustomCountries(){
+  try { return JSON.parse(localStorage.getItem(CUSTOM_COUNTRIES_KEY) || '[]'); }
+  catch (e) { return []; }
+}
+function addCustomCountry(name){
+  const list = getCustomCountries();
+  if (!list.includes(name)) {
+    list.push(name);
+    localStorage.setItem(CUSTOM_COUNTRIES_KEY, JSON.stringify(list));
+  }
+}
+function allCountriesSorted(){
+  const merged = [...new Set([...EUROPEAN_COUNTRIES, ...getCustomCountries()])];
+  return merged.sort((a, b) => a.localeCompare(b, 'es'));
+}
+function buildCountryOptionsHtml(selected){
+  const opts = allCountriesSorted().map(c =>
+    `<option value="${escapeHtml(c)}" ${c === selected ? 'selected' : ''}>${escapeHtml(c)}</option>`
+  ).join('');
+  return opts + `<option value="__new__">+ Añadir país nuevo…</option>`;
+}
+function buildProvinceOptionsHtml(selected){
+  return SPAIN_PROVINCES.map(p =>
+    `<option value="${escapeHtml(p)}" ${p === selected ? 'selected' : ''}>${escapeHtml(p)}</option>`
+  ).join('');
+}
+function buildComunidadOptionsHtml(selected){
+  return SPAIN_COMUNIDADES.map(c =>
+    `<option value="${escapeHtml(c)}" ${c === selected ? 'selected' : ''}>${escapeHtml(c)}</option>`
+  ).join('');
+}
 
 async function ensureRestaurantesTrip(){
   const trips = await dbGetAll('trips');
@@ -1881,6 +1954,7 @@ async function renderTripDetail(tripId){
   if (trip.isDefault) {
     document.getElementById('tripRegularSection').style.display = 'none';
     document.getElementById('restaurantesSection').style.display = 'block';
+    populateRestAddFormCountrySelects();
     await renderRestaurantView(tripId);
     await renderRestaurantEditList(tripId);
   } else {
@@ -1979,9 +2053,22 @@ async function renderTicketsEditList(tripId){
 }
 
 /* ---------- render: fichas de Restaurantes ---------- */
+function sortRestaurantEntries(entries){
+  return entries.sort((a, b) => {
+    const fa = a.fecha || '', fb = b.fecha || '';
+    if (fa !== fb) return fb.localeCompare(fa);
+    return (b.createdAt || 0) - (a.createdAt || 0);
+  });
+}
+function populateRestAddFormCountrySelects(){
+  document.getElementById('restPais').innerHTML = buildCountryOptionsHtml('España');
+  document.getElementById('restProvincia').innerHTML = buildProvinceOptionsHtml('');
+  document.getElementById('restComunidad').innerHTML = buildComunidadOptionsHtml('');
+  document.getElementById('restProvinciaRow').style.display = 'block';
+  document.getElementById('restComunidadRow').style.display = 'block';
+}
 async function renderRestaurantView(tripId){
-  const entries = await dbGetAll('restaurantEntries', 'tripId', tripId);
-  entries.sort((a,b) => b.createdAt - a.createdAt);
+  const entries = sortRestaurantEntries(await dbGetAll('restaurantEntries', 'tripId', tripId));
   const container = document.getElementById('restaurantView');
   if (entries.length === 0) { container.innerHTML = '<p class="help-text">Sin restaurantes añadidos todavía.</p>'; return; }
   container.innerHTML = entries.map(r => {
@@ -1991,22 +2078,30 @@ async function renderRestaurantView(tripId){
       objectUrlsToRevoke.push(url);
       thumb = `<img src="${url}" style="width:100%; border-radius:6px; margin-top:8px;">`;
     }
+    const pais = r.pais || '';
+    const isSpain = pais === 'España';
+    const locationBits = [pais, isSpain ? r.comunidad : '', isSpain ? r.provincia : ''].filter(Boolean).map(escapeHtml);
     return `
-      <div class="card" style="cursor:default;">
+      <div class="card rest-card" data-id="${r.id}" style="cursor:pointer;">
         <div style="display:flex; justify-content:space-between; gap:8px;">
           <span class="card-title">${escapeHtml(r.concepto)}</span>
-          <span class="card-title" style="color:var(--accent-ember);">${Number(r.precio).toFixed(2)} €</span>
+          <span class="card-muted">${r.fecha ? escapeHtml(formatDateRange(r.fecha, r.fecha)) : '—'}</span>
         </div>
-        <div class="card-muted">Nº personas: ${r.numPersonas || '—'}</div>
-        ${r.observaciones ? `<div class="card-muted">${escapeHtml(r.observaciones)}</div>` : ''}
-        ${thumb}
+        <div class="rest-details" style="display:none; margin-top:8px;">
+          ${locationBits.length ? `<div class="card-muted">${locationBits.join(' · ')}</div>` : ''}
+          <div style="display:flex; justify-content:space-between; gap:8px; margin-top:4px;">
+            <span class="card-muted">Nº personas: ${r.numPersonas || '—'}</span>
+            <span class="card-title" style="color:var(--accent-ember);">${Number(r.precio || 0).toFixed(2)} €</span>
+          </div>
+          ${r.observaciones ? `<div class="card-muted">${escapeHtml(r.observaciones)}</div>` : ''}
+          ${thumb}
+        </div>
       </div>
     `;
   }).join('');
 }
 async function renderRestaurantEditList(tripId){
-  const entries = await dbGetAll('restaurantEntries', 'tripId', tripId);
-  entries.sort((a,b) => b.createdAt - a.createdAt);
+  const entries = sortRestaurantEntries(await dbGetAll('restaurantEntries', 'tripId', tripId));
   document.getElementById('restaurantEditList').innerHTML = entries.map(r => {
     let thumb = '';
     if (r.photoBlob) {
@@ -2014,11 +2109,25 @@ async function renderRestaurantEditList(tripId){
       objectUrlsToRevoke.push(url);
       thumb = `<img src="${url}" style="width:100%; border-radius:6px; margin:8px 0;">`;
     }
+    const pais = r.pais || 'España';
+    const isSpain = pais === 'España';
     return `
       <div class="card" data-id="${r.id}" style="cursor:default;">
         <button class="icon-btn danger" data-action="delete-restaurant" data-id="${r.id}">✕</button>
         <label class="field-label">Concepto</label>
         <input type="text" class="rest-input" data-field="concepto" data-id="${r.id}" value="${escapeHtml(r.concepto)}">
+        <label class="field-label">Fecha</label>
+        <input type="date" class="rest-input" data-field="fecha" data-id="${r.id}" value="${r.fecha || ''}">
+        <label class="field-label">País</label>
+        <select class="rest-input rest-pais-select" data-field="pais" data-id="${r.id}">${buildCountryOptionsHtml(pais)}</select>
+        <div class="rest-provincia-row" data-id="${r.id}" style="display:${isSpain ? 'block' : 'none'};">
+          <label class="field-label">Provincia</label>
+          <select class="rest-input" data-field="provincia" data-id="${r.id}">${buildProvinceOptionsHtml(r.provincia || '')}</select>
+        </div>
+        <div class="rest-comunidad-row" data-id="${r.id}" style="display:${isSpain ? 'block' : 'none'};">
+          <label class="field-label">Comunidad autónoma</label>
+          <select class="rest-input" data-field="comunidad" data-id="${r.id}">${buildComunidadOptionsHtml(r.comunidad || '')}</select>
+        </div>
         <label class="field-label">Precio (€)</label>
         <input type="number" step="0.01" min="0" class="rest-input" data-field="precio" data-id="${r.id}" value="${r.precio}">
         <label class="field-label">Nº personas</label>
@@ -3379,23 +3488,73 @@ document.getElementById('btnAddRestPhotoGallery').addEventListener('click', () =
 document.getElementById('btnAddRestPhotoCamera').addEventListener('click', () => document.getElementById('restPhotoCameraInput').click());
 document.getElementById('restPhotoFileInput').addEventListener('change', (e) => { handleRestPhotoSelected(e.target.files[0]); e.target.value = ''; });
 document.getElementById('restPhotoCameraInput').addEventListener('change', (e) => { handleRestPhotoSelected(e.target.files[0]); e.target.value = ''; });
+document.getElementById('restPais').addEventListener('change', (e) => {
+  let value = e.target.value;
+  if (value === '__new__') {
+    const newCountry = prompt('Nombre del nuevo país:');
+    if (newCountry && newCountry.trim()) {
+      addCustomCountry(newCountry.trim());
+      value = newCountry.trim();
+    } else {
+      value = 'España';
+    }
+    e.target.innerHTML = buildCountryOptionsHtml(value);
+  }
+  const isSpain = value === 'España';
+  document.getElementById('restProvinciaRow').style.display = isSpain ? 'block' : 'none';
+  document.getElementById('restComunidadRow').style.display = isSpain ? 'block' : 'none';
+});
 document.getElementById('btnAddRestaurant').addEventListener('click', async () => {
   const concepto = document.getElementById('restConcepto').value.trim();
+  const fecha = document.getElementById('restFecha').value;
+  const pais = document.getElementById('restPais').value;
+  const isSpain = pais === 'España';
+  const provincia = isSpain ? document.getElementById('restProvincia').value : '';
+  const comunidad = isSpain ? document.getElementById('restComunidad').value : '';
   const precio = parseFloat(document.getElementById('restPrecio').value) || 0;
   const numPersonas = parseInt(document.getElementById('restPersonas').value) || null;
   const observaciones = document.getElementById('restObservaciones').value.trim();
   if (!concepto) { alert('Escribe al menos el concepto.'); return; }
-  await addRestaurantEntry(currentTripId, { concepto, precio, numPersonas, observaciones }, pendingRestPhoto);
+  await addRestaurantEntry(currentTripId, { concepto, fecha, pais, provincia, comunidad, precio, numPersonas, observaciones }, pendingRestPhoto);
   pendingRestPhoto = null;
   document.getElementById('restConcepto').value = '';
+  document.getElementById('restFecha').value = '';
   document.getElementById('restPrecio').value = '';
   document.getElementById('restPersonas').value = '';
   document.getElementById('restObservaciones').value = '';
   document.getElementById('restPhotoStatus').textContent = '';
+  populateRestAddFormCountrySelects();
   await renderRestaurantView(currentTripId);
   await renderRestaurantEditList(currentTripId);
 });
 document.getElementById('restaurantEditList').addEventListener('change', async (e) => {
+  const paisSelect = e.target.closest('.rest-pais-select');
+  if (paisSelect) {
+    const id = paisSelect.dataset.id;
+    let value = paisSelect.value;
+    if (value === '__new__') {
+      const newCountry = prompt('Nombre del nuevo país:');
+      if (newCountry && newCountry.trim()) {
+        addCustomCountry(newCountry.trim());
+        value = newCountry.trim();
+      } else {
+        value = 'España';
+      }
+      paisSelect.innerHTML = buildCountryOptionsHtml(value);
+    }
+    const entry = await dbGet('restaurantEntries', id);
+    if (entry) {
+      entry.pais = value;
+      await updateRestaurantEntry(entry);
+    }
+    const isSpain = value === 'España';
+    const provRow = document.querySelector(`.rest-provincia-row[data-id="${id}"]`);
+    const comRow = document.querySelector(`.rest-comunidad-row[data-id="${id}"]`);
+    if (provRow) provRow.style.display = isSpain ? 'block' : 'none';
+    if (comRow) comRow.style.display = isSpain ? 'block' : 'none';
+    await renderRestaurantView(currentTripId);
+    return;
+  }
   const input = e.target.closest('.rest-input');
   if (!input) return;
   const entry = await dbGet('restaurantEntries', input.dataset.id);
@@ -3416,6 +3575,12 @@ document.getElementById('restaurantEditList').addEventListener('click', async (e
       await renderRestaurantEditList(currentTripId);
     }
   }
+});
+document.getElementById('restaurantView').addEventListener('click', (e) => {
+  const card = e.target.closest('.rest-card');
+  if (!card) return;
+  const details = card.querySelector('.rest-details');
+  if (details) details.style.display = details.style.display === 'none' ? 'block' : 'none';
 });
 document.getElementById('btnToggleRestaurantEdit').addEventListener('click', () => {
   restaurantEditMode = !restaurantEditMode;
