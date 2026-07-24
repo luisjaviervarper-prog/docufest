@@ -1,0 +1,3743 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0B0B0D">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>DocuFest</title>
+<style>
+  :root{
+    --bg-obsidian:#0B0B0D;
+    --bg-ash:#1A1614;
+    --bg-ash-light:#28221F;
+    --accent-ember:#FF5A1F;
+    --accent-crimson:#B3121C;
+    --accent-brass:#C9A24B;
+    --text-parchment:#F2E9DC;
+    --text-muted:#9C9186;
+    --state-error:#E03B3B;
+    --font-display: 'Arial Black', Impact, 'Segoe UI Black', sans-serif;
+    --font-condensed: Arial, 'Arial Narrow', sans-serif;
+    --font-body: -apple-system, Roboto, 'Segoe UI', Arial, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;height:100%;}
+  body{
+    background:linear-gradient(180deg, var(--bg-obsidian), var(--bg-ash));
+    color:var(--text-parchment);
+    font-family:var(--font-body);
+    min-height:100vh;
+    padding-top:env(safe-area-inset-top);
+    padding-bottom:env(safe-area-inset-bottom);
+  }
+  .screen{display:none; min-height:100vh; flex-direction:column;}
+  .screen.active{display:flex;}
+  .topbar{
+    display:flex; align-items:center; gap:8px;
+    padding:14px 12px; background:var(--bg-obsidian);
+    border-bottom:1px solid rgba(201,162,75,0.2);
+    position:sticky; top:0; z-index:5;
+  }
+  .topbar h1{
+    font-family:var(--font-condensed); font-weight:700; text-transform:uppercase;
+    letter-spacing:0.03em; font-size:18px; margin:0; flex:1;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  .icon-btn{
+    background:none; border:none; color:var(--text-parchment);
+    font-size:20px; padding:8px; cursor:pointer; line-height:1;
+    border-radius:6px;
+  }
+  .icon-btn:active{background:rgba(255,255,255,0.08);}
+  .icon-btn.danger{color:var(--state-error); font-size:16px; position:absolute; top:4px; right:4px; padding:4px 8px;}
+  .content{flex:1; padding:16px; overflow-y:auto;}
+  .center-column{
+    flex:1; display:flex; flex-direction:column; justify-content:center;
+    align-items:center; padding:32px; text-align:center; gap:8px;
+  }
+  .app-title{
+    font-family:var(--font-display); font-size:42px; text-transform:uppercase;
+    letter-spacing:0.06em; margin:0; color:var(--text-parchment);
+    text-shadow:0 0 18px rgba(255,90,31,0.35);
+  }
+  .subtitle{color:var(--text-muted); font-size:14px; margin-bottom:24px;}
+  .btn-ember{
+    display:block; width:100%; border:none; border-radius:8px;
+    padding:16px; font-family:var(--font-condensed); font-weight:700;
+    text-transform:uppercase; letter-spacing:0.04em; font-size:15px;
+    color:var(--text-parchment); cursor:pointer;
+    background:linear-gradient(90deg, var(--accent-ember), var(--accent-crimson));
+    box-shadow:0 0 16px rgba(255,90,31,0.25);
+    margin-bottom:14px;
+  }
+  .btn-ember:disabled{opacity:0.35; box-shadow:none;}
+  .btn-outline{
+    display:block; width:100%; border:1px solid rgba(201,162,75,0.5);
+    border-radius:8px; padding:14px; background:none; color:var(--text-parchment);
+    font-family:var(--font-condensed); text-transform:uppercase; letter-spacing:0.03em;
+    font-size:13px; cursor:pointer; margin-bottom:10px;
+  }
+  .help-text{color:var(--text-muted); font-size:12.5px; line-height:1.5; max-width:340px;}
+  .card{
+    background:var(--bg-ash); border:1px solid rgba(201,162,75,0.3);
+    border-radius:8px; position:relative; padding:12px; margin-bottom:10px;
+    cursor:pointer;
+  }
+  .card-title{font-family:var(--font-condensed); font-weight:700; font-size:16px;}
+  .card-muted{color:var(--text-muted); font-size:12.5px; margin-top:2px;}
+  .empty-state{color:var(--text-muted); text-align:center; padding:48px 16px; font-size:14px;}
+  .grid{display:grid; grid-template-columns:repeat(2, 1fr); gap:10px;}
+  .grid.docs{grid-template-columns:repeat(3, 1fr);}
+  .category-card, .document-card{text-align:center; padding:14px 8px;}
+  .category-icon{font-size:30px; margin-bottom:6px;}
+  .doc-thumb{width:100%; height:80px; object-fit:cover; border-radius:6px; margin-bottom:6px;}
+  .doc-icon{font-size:34px; margin-bottom:6px;}
+  .doc-label{font-size:11.5px; word-break:break-word;}
+  .fab{
+    position:fixed; right:20px; bottom:24px; width:56px; height:56px;
+    border-radius:50%; border:none; font-size:26px; color:var(--text-parchment);
+    background:linear-gradient(135deg, var(--accent-ember), var(--accent-crimson));
+    box-shadow:0 4px 18px rgba(255,90,31,0.45); cursor:pointer; z-index:6;
+  }
+  .fab-secondary{
+    position:fixed; right:20px; bottom:90px; width:48px; height:48px;
+    border-radius:50%; border:1px solid rgba(201,162,75,0.5); font-size:20px;
+    color:var(--text-parchment); background:var(--bg-ash);
+    box-shadow:0 4px 14px rgba(0,0,0,0.4); cursor:pointer; z-index:6;
+  }
+  .tile{
+    background:var(--bg-ash); border:1px solid rgba(201,162,75,0.3);
+    border-radius:8px; padding:20px; margin-bottom:14px; cursor:pointer;
+  }
+  .tile h3{font-family:var(--font-condensed); text-transform:uppercase; margin:0 0 6px; font-size:16px;}
+  .tile p{color:var(--text-muted); font-size:13px; margin:0;}
+  .logo-mark{margin-bottom:6px; filter:drop-shadow(0 0 12px rgba(255,90,31,0.4));}
+  .section-title{
+    font-family:var(--font-condensed); text-transform:uppercase; letter-spacing:0.04em;
+    color:var(--accent-brass); font-size:13px; margin:16px 0 8px;
+  }
+  .field-row{margin-bottom:12px;}
+  .field-row .field-value-row{display:flex; gap:8px; align-items:center;}
+  .field-row input[type=text]{flex:1; margin-bottom:0;}
+  .ficha-card{
+    background:var(--bg-ash); border:1px solid rgba(201,162,75,0.3);
+    border-radius:8px; padding:6px 14px; margin-bottom:10px;
+  }
+  .field-row-view{
+    display:flex; justify-content:space-between; gap:12px;
+    padding:10px 0; border-bottom:1px solid rgba(201,162,75,0.15);
+  }
+  .field-row-view:last-child{border-bottom:none;}
+  .field-row-label{color:var(--text-muted); font-size:12px; text-transform:uppercase; letter-spacing:0.03em;}
+  .field-row-value{font-size:14px; text-align:right; word-break:break-word; max-width:60%;}
+  .cal-month{margin-bottom:16px;}
+  .cal-month-title{
+    font-family:var(--font-condensed); text-transform:uppercase; letter-spacing:0.03em;
+    color:var(--accent-brass); font-size:13px; margin-bottom:6px;
+  }
+  .cal-weekdays{display:grid; grid-template-columns:repeat(7,1fr); gap:3px; margin-bottom:3px;}
+  .cal-weekdays span{text-align:center; font-size:10px; color:var(--text-muted);}
+  .cal-grid{display:grid; grid-template-columns:repeat(7,1fr); gap:3px;}
+  .cal-cell{
+    aspect-ratio:1; display:flex; align-items:center; justify-content:center;
+    font-size:11px; border-radius:4px; background:var(--bg-ash-light); color:var(--text-parchment);
+  }
+  .cal-empty{background:none;}
+  .cal-vacation{background:#2E6FE0; color:#fff; font-weight:700;}
+  .cal-festivo{background:var(--accent-crimson); color:#fff; font-weight:700;}
+  .cal-permiso{background:#D6478F; color:#fff; font-weight:700;}
+  .cal-lactancia{background:#8ED0F0; color:#0B0B0D; font-weight:700;}
+  .cal-legend{display:flex; gap:16px; font-size:12px; color:var(--text-muted); margin-bottom:10px;}
+  .cal-legend span{display:inline-flex; align-items:center; gap:6px;}
+  .cal-legend i{width:12px; height:12px; border-radius:3px; display:inline-block;}
+  .cal-editable{cursor:pointer;}
+  .cal-editable:active{outline:2px solid var(--accent-ember);}
+  input[type=text], input[type=search], input[type=password], input[type=number], input[type=date], select{
+    width:100%; padding:14px; border-radius:8px; border:1px solid rgba(201,162,75,0.4);
+    background:var(--bg-ash-light); color:var(--text-parchment); font-size:15px; margin-bottom:12px;
+  }
+  select{appearance:none; -webkit-appearance:none;}
+  input[type=date]{color-scheme:dark;}
+  label.field-label{font-size:12px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em;}
+  .toggle-row{display:flex; align-items:center; gap:8px; color:var(--text-muted); font-size:13px; margin-bottom:10px;}
+  .modal-overlay{
+    position:fixed; inset:0; background:rgba(0,0,0,0.75); display:none;
+    align-items:flex-end; z-index:20;
+  }
+  .modal-overlay.active{display:flex;}
+  .modal-sheet{
+    background:var(--bg-ash); width:100%; max-height:88vh; overflow-y:auto;
+    border-radius:16px 16px 0 0; border-top:1px solid rgba(201,162,75,0.4);
+    padding:16px;
+  }
+  .modal-header{display:flex; align-items:center; margin-bottom:12px;}
+  .modal-header h2{font-family:var(--font-condensed); text-transform:uppercase; font-size:16px; flex:1; margin:0;}
+  .viewer-image{width:100%; border-radius:8px; margin-bottom:12px;}
+  .modal-actions{display:flex; gap:8px; margin-top:12px;}
+  .modal-actions a, .modal-actions button{flex:1; text-align:center; text-decoration:none;}
+  a.btn-ember{display:flex; align-items:center; justify-content:center;}
+</style>
+</head>
+<body>
+
+  <!-- ===================== BLOQUEO (PIN / huella / rostro) ===================== -->
+  <section id="screen-lock" class="screen active">
+    <div class="center-column">
+      <svg class="logo-mark" viewBox="0 0 100 100" width="64" height="64" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="50" cy="50" r="48" fill="var(--bg-ash)" stroke="var(--accent-brass)" stroke-opacity="0.4" stroke-width="1.5"/>
+        <path fill="var(--accent-ember)" d="M50 15c0 19-19 22-19 42a19 19 0 0 0 38 0c0-8-5-13-5-21 4 4 9 12 9 21a23 23 0 0 1-46 0c0-32 23-26 23-42z"/>
+        <path fill="var(--accent-crimson)" d="M50 43c-1 8-8 11-8 18a8 8 0 0 0 16 0c0-4-2-6-2-9 2 2 4 5 4 9a10 10 0 0 1-20 0c0-11 9-14 10-18z"/>
+      </svg>
+      <h1 class="app-title" style="font-size:32px;">DocuFest</h1>
+
+      <div id="lockSetup" style="width:100%; max-width:320px; display:none;">
+        <p class="help-text">Crea un PIN para proteger tus documentos. Se pedirá cada vez que abras la app.</p>
+        <label class="field-label">Nuevo PIN (4-6 dígitos)</label>
+        <input type="password" id="pinSetupInput" inputmode="numeric" maxlength="6" placeholder="••••">
+        <label class="field-label">Confirmar PIN</label>
+        <input type="password" id="pinSetupConfirm" inputmode="numeric" maxlength="6" placeholder="••••">
+        <div class="help-text" id="pinSetupError" style="color:var(--state-error);"></div>
+        <button class="btn-ember" id="btnSavePin">Guardar PIN</button>
+      </div>
+
+      <div id="lockUnlock" style="width:100%; max-width:320px; display:none;">
+        <p class="help-text">Introduce tu PIN para continuar.</p>
+        <input type="password" id="pinUnlockInput" inputmode="numeric" maxlength="6" placeholder="••••">
+        <div class="help-text" id="pinUnlockError" style="color:var(--state-error);"></div>
+        <button class="btn-ember" id="btnUnlockPin">Desbloquear</button>
+        <button class="btn-outline" id="btnBiometricUnlock" style="display:none;">🔓 Usar huella / rostro</button>
+      </div>
+
+      <div id="biometricOffer" style="width:100%; max-width:320px; display:none;">
+        <p class="help-text">¿Quieres activar el desbloqueo con huella o rostro para no escribir el PIN cada vez? (Solo disponible si abres la app desde una URL https, no desde un archivo local).</p>
+        <button class="btn-ember" id="btnEnableBiometric">Activar huella / rostro</button>
+        <button class="btn-outline" id="btnSkipBiometric">Ahora no</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== BIENVENIDA ===================== -->
+  <section id="screen-welcome" class="screen">
+    <div class="center-column">
+      <svg class="logo-mark" viewBox="0 0 100 100" width="88" height="88" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="50" cy="50" r="48" fill="var(--bg-ash)" stroke="var(--accent-brass)" stroke-opacity="0.4" stroke-width="1.5"/>
+        <path fill="var(--accent-ember)" d="M50 15c0 19-19 22-19 42a19 19 0 0 0 38 0c0-8-5-13-5-21 4 4 9 12 9 21a23 23 0 0 1-46 0c0-32 23-26 23-42z"/>
+        <path fill="var(--accent-crimson)" d="M50 43c-1 8-8 11-8 18a8 8 0 0 0 16 0c0-4-2-6-2-9 2 2 4 5 4 9a10 10 0 0 1-20 0c0-11 9-14 10-18z"/>
+      </svg>
+      <h1 class="app-title">DocuFest</h1>
+      <div class="subtitle">Tu documentación, siempre a mano</div>
+      <div style="width:100%; max-width:340px;">
+        <button class="btn-ember" id="btnOpenProfile">Abrir perfil existente</button>
+        <button class="btn-ember" id="btnCreateProfile">Crear nuevo perfil</button>
+        <button class="btn-outline" id="btnTrips">✈️ Viajes</button>
+        <button class="btn-outline" id="btnVacations">🏖 Vacaciones</button>
+        <button class="btn-outline" id="btnReadings">📚 Lecturas</button>
+        <button class="btn-outline" id="btnCar">🚗 Coche</button>
+        <button class="btn-outline" id="btnExportFullBackup">💾 Exportar todos los datos</button>
+        <button class="btn-outline" id="btnImportFullBackup">📥 Importar datos</button>
+        <input type="file" id="fullBackupImportInput" accept=".dfbackup,application/octet-stream,*/*" style="display:none">
+        <button class="btn-outline" id="btnFormatAllData" style="color:var(--accent-crimson); border-color:var(--accent-crimson);">🗑 Formatear todos los datos</button>
+      </div>
+      <p class="help-text">
+        Tus documentos se guardan de forma privada en este navegador, en este móvil.
+        Usa "Exportar copia (.zip)" dentro de un perfil para guardar además una copia
+        real en la carpeta Descargas, organizada por perfil y categoría.
+      </p>
+      <p class="help-text">
+        "Exportar todos los datos" crea un único archivo con absolutamente todo
+        (perfiles, documentos, viajes, vacaciones, lecturas, coche...), protegido
+        con un PIN que tú eliges. Guárdalo en un sitio seguro (nube, email, etc.):
+        si formateas el móvil o cambias de teléfono, usa "Importar datos" con ese
+        mismo archivo y PIN para recuperarlo todo de golpe.
+      </p>
+    </div>
+  </section>
+
+  <!-- ===================== LISTA DE PERFILES ===================== -->
+  <section id="screen-profiles" class="screen">
+    <div class="topbar">
+      <button class="icon-btn" onclick="history.back()">←</button>
+      <h1>Tus perfiles</h1>
+      <button class="icon-btn" id="btnSearchGlobal" title="Buscar">🔍</button>
+    </div>
+    <div class="content">
+      <div class="toggle-row">
+        <input type="checkbox" id="toggleAutoArchive">
+        <label for="toggleAutoArchive">Archivar cada documento nuevo en Descargas (.zip)</label>
+      </div>
+      <p class="help-text" style="margin:-4px 0 12px;">
+        Cada .zip trae la carpeta Perfil/Categoría ya dentro. Extráelos siempre
+        sobre la misma carpeta de destino (ej. una carpeta "DocuFest" que crees
+        una vez en tu gestor de archivos) para que las carpetas se vayan uniendo.
+      </p>
+      <button class="btn-outline" id="btnExportAll">⬇ Exportar copia de todo (.zip)</button>
+      <button class="btn-outline" id="btnLockNow">🔒 Bloquear ahora</button>
+      <button class="btn-outline" id="btnResetPin">🔑 Cambiar PIN / huella</button>
+      <div id="profilesList"></div>
+      <div class="empty-state" id="profilesEmpty">Aún no tienes perfiles. Toca "+" para crear el primero.</div>
+    </div>
+    <button class="fab" id="fabAddProfile" title="Crear perfil">＋</button>
+  </section>
+
+  <!-- ===================== CREAR PERFIL ===================== -->
+  <section id="screen-create-profile" class="screen">
+    <div class="topbar">
+      <button class="icon-btn" onclick="history.back()">←</button>
+      <h1>Nuevo perfil</h1>
+    </div>
+    <div class="content">
+      <div id="stepType">
+        <div class="tile" id="tilePersona">
+          <h3>Persona</h3>
+          <p>Documentos de identidad de una persona física (DNI, padrón, carnet...)</p>
+        </div>
+        <div class="tile" id="tileOtros">
+          <h3>Otros</h3>
+          <p>Cualquier otra documentación: vehículos, propiedades, mascotas…</p>
+        </div>
+      </div>
+      <div id="stepName" style="display:none;">
+        <label class="field-label">Nombre del perfil</label>
+        <input type="text" id="inputProfileName" placeholder="Ej. Luis Varela">
+        <button class="btn-ember" id="btnConfirmProfile">Crear perfil</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== CATEGORÍAS DE UN PERFIL ===================== -->
+  <section id="screen-categories" class="screen">
+    <div class="topbar">
+      <button class="icon-btn" onclick="history.back()">←</button>
+      <h1 id="categoriesTitle">Perfil</h1>
+      <button class="icon-btn" id="btnSearchFromCategories" title="Buscar">🔍</button>
+    </div>
+    <div class="content">
+      <button class="btn-outline" id="btnExportProfile">⬇ Exportar copia de este perfil (.zip)</button>
+
+      <div class="section-title">Categorías</div>
+      <div class="grid" id="categoriesList"></div>
+
+      <div class="section-title">Ficha</div>
+      <div class="ficha-card" id="fieldsView"></div>
+      <div id="fieldsEdit" style="display:none;">
+        <div id="fieldsEditList"></div>
+        <button class="btn-outline" id="btnAddField">＋ Añadir campo de texto</button>
+      </div>
+      <button class="btn-outline" id="btnToggleFieldsEdit">✏️ Modificar ficha</button>
+    </div>
+    <button class="fab" id="btnAddCategory" title="Nueva categoría">＋</button>
+  </section>
+
+  <!-- ===================== DETALLE DE CATEGORÍA ===================== -->
+  <section id="screen-category-detail" class="screen">
+    <div class="topbar">
+      <button class="icon-btn" onclick="history.back()">←</button>
+      <h1 id="categoryDetailTitle">Categoría</h1>
+    </div>
+    <div class="content">
+      <div class="grid docs" id="documentsList"></div>
+      <div class="empty-state" id="documentsEmpty">Todavía no hay documentos aquí. Toca "+" para añadir el primero.</div>
+    </div>
+    <button class="fab-secondary" id="btnAddPhoto" title="Hacer foto">📷</button>
+    <button class="fab" id="btnAddDocument" title="Añadir documento">＋</button>
+    <input type="file" id="fileInput" multiple style="display:none"
+      accept="image/jpeg,image/png,application/pdf,.pdf,.xls,.xlsx,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
+    <input type="file" id="cameraInput" style="display:none" accept="image/*" capture="environment">
+  </section>
+
+  <!-- ===================== BÚSQUEDA ===================== -->
+  <section id="screen-search" class="screen">
+    <div class="topbar">
+      <button class="icon-btn" onclick="history.back()">←</button>
+      <h1>Buscar</h1>
+    </div>
+    <div class="content">
+      <input type="search" id="searchInput" placeholder="Buscar documentos…">
+      <div class="toggle-row" id="toggleScope" style="display:none;">
+        <input type="checkbox" id="toggleScopeCheckbox">
+        <label for="toggleScopeCheckbox">Buscar solo en este perfil</label>
+      </div>
+      <div id="searchResults"></div>
+    </div>
+  </section>
+
+  <!-- ===================== LISTA DE VIAJES ===================== -->
+  <section id="screen-trips" class="screen">
+    <div class="topbar">
+      <button class="icon-btn" onclick="history.back()">←</button>
+      <h1>Viajes</h1>
+    </div>
+    <div class="content">
+      <div id="tripsList"></div>
+    </div>
+    <button class="fab" id="btnAddTrip" title="Nuevo viaje">＋</button>
+  </section>
+
+  <!-- ===================== DETALLE DE VIAJE ===================== -->
+  <section id="screen-trip-detail" class="screen">
+    <div class="topbar">
+      <button class="icon-btn" onclick="history.back()">←</button>
+      <h1 id="tripDetailTitle">Viaje</h1>
+    </div>
+    <div class="content">
+
+      <!-- Viaje normal: gastos + tickets -->
+      <div id="tripRegularSection">
+        <div class="section-title">Gastos</div>
+        <div class="ficha-card" id="expensesTotal"></div>
+        <div id="expensesView"></div>
+        <div id="expensesEdit" style="display:none;">
+          <div class="tile" style="padding:14px;">
+            <label class="field-label">Concepto</label>
+            <input type="text" id="expenseConcepto" placeholder="Ej. Cena, taxi...">
+            <label class="field-label">Ubicación</label>
+            <input type="text" id="expenseUbicacion" list="ubicacionesDatalist" placeholder="Ej. Roma">
+            <datalist id="ubicacionesDatalist"></datalist>
+            <label class="field-label">Tipo</label>
+            <select id="expenseTipo">
+              <option value="Alojamiento">Alojamiento</option>
+              <option value="Restauración">Restauración</option>
+              <option value="Entradas">Entradas</option>
+              <option value="Gasoil">Gasoil</option>
+              <option value="Avión">Avión</option>
+              <option value="Varios">Varios</option>
+            </select>
+            <label class="field-label">Coste (€)</label>
+            <input type="number" step="0.01" min="0" id="expenseCoste" placeholder="0,00">
+            <label class="field-label">Observaciones</label>
+            <input type="text" id="expenseObservaciones" placeholder="Opcional">
+            <button class="btn-ember" id="btnAddExpense" style="margin-top:4px;">＋ Añadir gasto</button>
+          </div>
+          <div id="expensesEditList"></div>
+        </div>
+        <button class="btn-outline" id="btnToggleExpensesEdit">✏️ Modificar gastos</button>
+
+        <div class="section-title">Tickets</div>
+        <div class="grid docs" id="ticketsView"></div>
+        <div id="ticketsEdit" style="display:none;">
+          <div class="tile" style="padding:14px;">
+            <label class="field-label">Concepto del ticket</label>
+            <input type="text" id="ticketConcepto" placeholder="Ej. Cena del día 3">
+            <div style="display:flex; gap:8px;">
+              <button class="btn-outline" id="btnAddTicketGallery" style="flex:1; margin-bottom:0;">🖼 Galería</button>
+              <button class="btn-outline" id="btnAddTicketCamera" style="flex:1; margin-bottom:0;">📷 Cámara</button>
+            </div>
+          </div>
+          <div class="grid docs" id="ticketsEditList"></div>
+        </div>
+        <input type="file" id="ticketFileInput" accept="image/*" style="display:none">
+        <input type="file" id="ticketCameraInput" accept="image/*" capture="environment" style="display:none">
+        <button class="btn-outline" id="btnToggleTicketsEdit">✏️ Modificar tickets</button>
+      </div>
+
+      <!-- Restaurantes: fichas con foto de ticket -->
+      <div id="restaurantesSection" style="display:none;">
+        <div class="section-title">Restaurantes</div>
+        <div id="restaurantView"></div>
+        <div id="restaurantEdit" style="display:none;">
+          <div class="tile" style="padding:14px;">
+            <label class="field-label">Concepto</label>
+            <input type="text" id="restConcepto" placeholder="Ej. Trattoria da Mario">
+            <label class="field-label">Precio (€)</label>
+            <input type="number" step="0.01" min="0" id="restPrecio" placeholder="0,00">
+            <label class="field-label">Nº personas</label>
+            <input type="number" min="1" id="restPersonas" placeholder="Ej. 2">
+            <label class="field-label">Observaciones</label>
+            <input type="text" id="restObservaciones" placeholder="Opcional">
+            <div style="display:flex; gap:8px;">
+              <button class="btn-outline" id="btnAddRestPhotoGallery" style="flex:1;">🖼 Foto ticket</button>
+              <button class="btn-outline" id="btnAddRestPhotoCamera" style="flex:1;">📷 Cámara</button>
+            </div>
+            <div class="help-text" id="restPhotoStatus" style="margin:-4px 0 8px;"></div>
+            <button class="btn-ember" id="btnAddRestaurant" style="margin-top:4px;">＋ Añadir restaurante</button>
+          </div>
+          <div id="restaurantEditList"></div>
+        </div>
+        <input type="file" id="restPhotoFileInput" accept="image/*" style="display:none">
+        <input type="file" id="restPhotoCameraInput" accept="image/*" capture="environment" style="display:none">
+        <button class="btn-outline" id="btnToggleRestaurantEdit">✏️ Modificar restaurantes</button>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ===================== VACACIONES ===================== -->
+  <section id="screen-vacations" class="screen">
+    <div class="topbar">
+      <button class="icon-btn" onclick="history.back()">←</button>
+      <h1>Vacaciones</h1>
+    </div>
+    <div class="content">
+      <div style="display:flex; align-items:center; justify-content:center; gap:20px; margin-bottom:14px;">
+        <button class="icon-btn" id="btnVacationPrevYear">◀</button>
+        <span class="app-title" id="vacationYearLabel" style="font-size:22px;">2026</span>
+        <button class="icon-btn" id="btnVacationNextYear">▶</button>
+      </div>
+
+      <div class="ficha-card" id="vacationYearSummary"></div>
+      <div id="vacationAssignedEditRow" style="display:none; gap:8px; align-items:center; margin-bottom:12px;">
+        <input type="number" min="0" id="inputVacationAssigned" placeholder="Días asignados este año" style="margin-bottom:0;">
+        <button class="btn-outline" id="btnSaveVacationAssigned" style="margin-bottom:0; width:auto; white-space:nowrap; padding:14px 18px;">Guardar</button>
+      </div>
+
+      <div class="cal-legend" style="flex-wrap:wrap; row-gap:6px;">
+        <span><i style="background:#2E6FE0;"></i>Vacaciones</span>
+        <span><i style="background:var(--accent-crimson);"></i>Festivos / fin de semana</span>
+        <span><i style="background:#D6478F;"></i>Permiso</span>
+        <span><i style="background:#8ED0F0;"></i>Lactancia</span>
+      </div>
+
+      <div id="vacationCalendar"></div>
+
+      <div class="section-title">Anotaciones</div>
+      <div id="annotationsView"></div>
+      <div id="annotationsEdit" style="display:none;">
+        <div class="tile" style="padding:14px;">
+          <label class="field-label">Desde</label>
+          <input type="date" id="annotationStart">
+          <label class="field-label">Hasta</label>
+          <input type="date" id="annotationEnd">
+          <label class="field-label">Concepto</label>
+          <input type="text" id="annotationConcepto" placeholder="Ej. Viaje médico, mudanza...">
+          <button class="btn-ember" id="btnAddAnnotation" style="margin-top:4px;">＋ Añadir anotación</button>
+        </div>
+        <div id="annotationsEditList"></div>
+      </div>
+      <button class="btn-outline" id="btnToggleAnnotationsEdit">✏️ Modificar anotaciones</button>
+
+      <div class="section-title">Resumen por años</div>
+      <div class="ficha-card" id="vacationYearsTable"></div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+        <button class="btn-outline" id="btnToggleVacationEdit" style="margin-bottom:0;">✏️ Modificar vacaciones</button>
+        <button class="btn-outline" id="btnToggleFestivoEdit" style="margin-bottom:0;">✏️ Modificar festivos</button>
+        <button class="btn-outline" id="btnTogglePermisoEdit" style="margin-bottom:0;">✏️ Modificar permiso</button>
+        <button class="btn-outline" id="btnToggleLactanciaEdit" style="margin-bottom:0;">✏️ Modificar lactancia</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== LECTURAS: AÑOS ===================== -->
+  <section id="screen-readings-years" class="screen">
+    <div class="topbar">
+      <button class="icon-btn" onclick="history.back()">←</button>
+      <h1>Lecturas</h1>
+    </div>
+    <div class="content">
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+        <button class="btn-outline" id="btnImportReadingsExcel" style="margin-bottom:0;">⬆ Importar Excel</button>
+        <button class="btn-outline" id="btnExportReadingsExcel" style="margin-bottom:0;">⬇ Exportar Excel</button>
+      </div>
+      <input type="file" id="readingsExcelInput" accept=".xlsx" style="display:none">
+      <button class="btn-outline" id="btnReadingsStats">📊 Estadísticas</button>
+      <button class="btn-outline" id="btnFormatReadings" style="color:var(--accent-crimson); border-color:var(--accent-crimson);">🗑 Formatear datos y volver a importar</button>
+      <div id="readingYearsList"></div>
+    </div>
+    <button class="fab" id="btnAddReadingYear" title="Nuevo año">＋</button>
+  </section>
+
+  <!-- ===================== LECTURAS: ESTADÍSTICAS ===================== -->
+  <section id="screen-readings-stats" class="screen">
+    <div class="topbar">
+      <button class="icon-btn" onclick="history.back()">←</button>
+      <h1>📊 Estadísticas de lecturas</h1>
+    </div>
+    <div class="content" id="readingsStatsBody"></div>
+  </section>
+
+  <!-- ===================== LECTURAS: DETALLE DE AÑO ===================== -->
+  <section id="screen-readings-detail" class="screen">
+    <div class="topbar">
+      <button class="icon-btn" onclick="history.back()">←</button>
+      <h1 id="readingsDetailTitle">Año</h1>
+    </div>
+    <div class="content">
+      <div id="readingsTableView"></div>
+      <div id="readingsTableEdit" style="display:none;">
+        <div class="tile" style="padding:14px;">
+          <label class="field-label">Título</label>
+          <input type="text" id="readingTitulo" placeholder="Título del libro">
+          <label class="field-label">Autor</label>
+          <input type="text" id="readingAutor" placeholder="Autor">
+          <label class="field-label">Año escrito</label>
+          <input type="text" id="readingAnoEscrito" placeholder="Ej. 1998">
+          <label class="field-label">Premios / Reconocimientos</label>
+          <input type="text" id="readingPremios" placeholder="Opcional">
+          <button class="btn-ember" id="btnAddReading" style="margin-top:4px;">＋ Añadir libro</button>
+        </div>
+        <div id="readingsEditList"></div>
+      </div>
+      <button class="btn-outline" id="btnToggleReadingsEdit">✏️ Modificar</button>
+    </div>
+  </section>
+
+  <!-- ===================== COCHE: INICIO ===================== -->
+  <section id="screen-car-home" class="screen">
+    <div class="topbar">
+      <button class="icon-btn" onclick="history.back()">←</button>
+      <h1>🚗 Coche</h1>
+    </div>
+    <div class="content">
+      <div class="card" id="btnCarVehicles" style="cursor:pointer;">
+        <div class="card-title">🚘 Vehículos</div>
+        <div class="card-muted">Matrícula, marca y modelo</div>
+      </div>
+      <div class="card" id="btnCarFuel" style="cursor:pointer;">
+        <div class="card-title">⛽ Gasoil</div>
+        <div class="card-muted">Repostajes organizados por año</div>
+      </div>
+      <div class="card" id="btnCarInsurance" style="cursor:pointer;">
+        <div class="card-title">🛡️ Seguro</div>
+        <div class="card-muted">Pólizas: año, coste y compañía</div>
+      </div>
+      <div class="card" id="btnCarGarage" style="cursor:pointer;">
+        <div class="card-title">🔧 Taller</div>
+        <div class="card-muted">Revisiones y reparaciones</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== COCHE: VEHÍCULOS ===================== -->
+  <section id="screen-car-vehicles" class="screen">
+    <div class="topbar">
+      <button class="icon-btn" onclick="history.back()">←</button>
+      <h1>🚘 Vehículos</h1>
+    </div>
+    <div class="content">
+      <div id="vehiclesView"></div>
+      <div id="vehiclesEdit" style="display:none;">
+        <div class="tile" style="padding:14px;">
+          <label class="field-label">Matrícula</label>
+          <input type="text" id="vehicleMatricula" placeholder="Ej. 1234 ABC">
+          <label class="field-label">Marca</label>
+          <input type="text" id="vehicleMarca" placeholder="Ej. Ford">
+          <label class="field-label">Modelo</label>
+          <input type="text" id="vehicleModelo" placeholder="Ej. Puma">
+          <button class="btn-ember" id="btnAddVehicle" style="margin-top:4px;">＋ Añadir vehículo</button>
+        </div>
+        <div id="vehiclesEditList"></div>
+      </div>
+      <button class="btn-outline" id="btnToggleVehiclesEdit">✏️ Modificar</button>
+    </div>
+  </section>
+
+  <!-- ===================== COCHE: GASOIL (AÑOS) ===================== -->
+  <section id="screen-car-fuel-years" class="screen">
+    <div class="topbar">
+      <button class="icon-btn" onclick="history.back()">←</button>
+      <h1>⛽ Gasoil</h1>
+    </div>
+    <div class="content">
+      <div id="carFuelYearsList"></div>
+    </div>
+    <button class="fab" id="btnAddCarFuelYear" title="Nuevo año">＋</button>
+  </section>
+
+  <!-- ===================== COCHE: GASOIL (DETALLE DE AÑO) ===================== -->
+  <section id="screen-car-fuel-detail" class="screen">
+    <div class="topbar">
+      <button class="icon-btn" onclick="history.back()">←</button>
+      <h1 id="carFuelDetailTitle">Año</h1>
+    </div>
+    <div class="content">
+      <label class="field-label">Filtrar por vehículo</label>
+      <select id="carFuelVehicleFilterSelect"></select>
+      <div class="ficha-card" id="carFuelTotal"></div>
+      <div id="carFuelView"></div>
+      <div id="carFuelEdit" style="display:none;">
+        <div class="tile" style="padding:14px;">
+          <label class="field-label">Fecha</label>
+          <input type="date" id="carFuelFecha">
+          <label class="field-label">Precio (€)</label>
+          <input type="number" step="0.01" min="0" id="carFuelPrecio" placeholder="0,00">
+          <label class="field-label">Gasolinera</label>
+          <input type="text" id="carFuelGasolinera" list="carGasolinerasDatalist" placeholder="Ej. Repsol A-6">
+          <datalist id="carGasolinerasDatalist"></datalist>
+          <label class="field-label">Anotaciones</label>
+          <input type="text" id="carFuelAnotaciones" placeholder="Opcional">
+          <label class="field-label">Vehículo</label>
+          <select id="carFuelVehicle"></select>
+          <button class="btn-ember" id="btnAddCarFuel" style="margin-top:4px;">＋ Añadir repostaje</button>
+        </div>
+        <div id="carFuelEditList"></div>
+      </div>
+      <button class="btn-outline" id="btnToggleCarFuelEdit">✏️ Modificar</button>
+    </div>
+  </section>
+
+  <!-- ===================== COCHE: SEGURO ===================== -->
+  <section id="screen-car-insurance" class="screen">
+    <div class="topbar">
+      <button class="icon-btn" onclick="history.back()">←</button>
+      <h1>🛡️ Seguro</h1>
+    </div>
+    <div class="content">
+      <label class="field-label">Filtrar por vehículo</label>
+      <select id="carInsuranceVehicleFilterSelect"></select>
+      <div class="ficha-card" id="carInsuranceTotal"></div>
+      <div id="carInsuranceView"></div>
+      <div id="carInsuranceEdit" style="display:none;">
+        <div class="tile" style="padding:14px;">
+          <label class="field-label">Año</label>
+          <input type="number" id="carInsuranceAnio" placeholder="Ej. 2026">
+          <label class="field-label">Coste (€)</label>
+          <input type="number" step="0.01" min="0" id="carInsuranceCoste" placeholder="0,00">
+          <label class="field-label">Compañía</label>
+          <input type="text" id="carInsuranceCompania" placeholder="Ej. Mapfre">
+          <label class="field-label">Vehículo</label>
+          <select id="carInsuranceVehicle"></select>
+          <button class="btn-ember" id="btnAddCarInsurance" style="margin-top:4px;">＋ Añadir póliza</button>
+        </div>
+        <div id="carInsuranceEditList"></div>
+      </div>
+      <button class="btn-outline" id="btnToggleCarInsuranceEdit">✏️ Modificar</button>
+    </div>
+  </section>
+
+  <!-- ===================== COCHE: TALLER ===================== -->
+  <section id="screen-car-garage" class="screen">
+    <div class="topbar">
+      <button class="icon-btn" onclick="history.back()">←</button>
+      <h1>🔧 Taller</h1>
+    </div>
+    <div class="content">
+      <label class="field-label">Filtrar por vehículo</label>
+      <select id="carGarageVehicleFilterSelect"></select>
+      <div id="carGarageView"></div>
+      <div id="carGarageEdit" style="display:none;">
+        <div class="tile" style="padding:14px;">
+          <label class="field-label">Fecha</label>
+          <input type="date" id="carGarageFecha">
+          <label class="field-label">Concepto</label>
+          <input type="text" id="carGarageConcepto" placeholder="Ej. Cambio de aceite">
+          <label class="field-label">Observaciones</label>
+          <input type="text" id="carGarageObservaciones" placeholder="Opcional">
+          <label class="field-label">Vehículo</label>
+          <select id="carGarageVehicle"></select>
+          <button class="btn-ember" id="btnAddCarGarage" style="margin-top:4px;">＋ Añadir entrada</button>
+        </div>
+        <div id="carGarageEditList"></div>
+      </div>
+      <button class="btn-outline" id="btnToggleCarGarageEdit">✏️ Modificar</button>
+    </div>
+  </section>
+
+  <!-- ===================== MODAL: VISOR DE DOCUMENTO ===================== -->
+  <div class="modal-overlay" id="modalViewer">
+    <div class="modal-sheet">
+      <div class="modal-header">
+        <h2 id="viewerTitle">Documento</h2>
+        <button class="icon-btn" id="viewerClose">✕</button>
+      </div>
+      <div id="viewerBody"></div>
+      <div class="modal-actions">
+        <a class="btn-ember" id="viewerDownload" href="#" download>⬇ Descargar</a>
+        <button class="btn-outline" id="viewerDelete" style="background:none;">🗑 Eliminar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== MODAL: PIN DE COPIA DE SEGURIDAD ===================== -->
+  <div class="modal-overlay" id="modalBackupPin">
+    <div class="modal-sheet">
+      <div class="modal-header">
+        <h2 id="backupPinModalTitle">PIN</h2>
+        <button class="icon-btn" id="backupPinModalClose">✕</button>
+      </div>
+      <div style="padding:16px;">
+        <p class="help-text" id="backupPinModalHelp"></p>
+        <label class="field-label">PIN</label>
+        <input type="password" inputmode="numeric" autocomplete="off" id="backupPinInput1" placeholder="Introduce el PIN">
+        <div id="backupPinConfirmRow" style="display:none;">
+          <label class="field-label">Confirmar PIN</label>
+          <input type="password" inputmode="numeric" autocomplete="off" id="backupPinInput2" placeholder="Repite el PIN">
+        </div>
+        <div class="help-text" id="backupPinModalError" style="color:var(--state-error); min-height:16px;"></div>
+        <button class="btn-ember" id="backupPinModalAccept" style="margin-top:4px;">Aceptar</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+/* ======================================================================
+   DocuFest — app HTML autocontenida (sin dependencias externas).
+   Persistencia: IndexedDB (privada de este navegador, en este móvil).
+   "Exportar copia (.zip)" genera un backup real con carpetas
+   Perfil/Categoría/archivo que se descarga a la carpeta Descargas del móvil.
+   ====================================================================== */
+
+/* ---------- IndexedDB helpers ---------- */
+function openDb(){
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open('docufest_db', 10);
+    req.onupgradeneeded = (e) => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains('profiles')) {
+        db.createObjectStore('profiles', { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains('categories')) {
+        const s = db.createObjectStore('categories', { keyPath: 'id' });
+        s.createIndex('profileId', 'profileId', { unique: false });
+      }
+      if (!db.objectStoreNames.contains('documents')) {
+        const s = db.createObjectStore('documents', { keyPath: 'id' });
+        s.createIndex('categoryId', 'categoryId', { unique: false });
+        s.createIndex('profileId', 'profileId', { unique: false });
+      }
+      if (!db.objectStoreNames.contains('fields')) {
+        const s = db.createObjectStore('fields', { keyPath: 'id' });
+        s.createIndex('profileId', 'profileId', { unique: false });
+      }
+      if (!db.objectStoreNames.contains('trips')) {
+        db.createObjectStore('trips', { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains('tripExpenses')) {
+        const s = db.createObjectStore('tripExpenses', { keyPath: 'id' });
+        s.createIndex('tripId', 'tripId', { unique: false });
+      }
+      if (!db.objectStoreNames.contains('tripTickets')) {
+        const s = db.createObjectStore('tripTickets', { keyPath: 'id' });
+        s.createIndex('tripId', 'tripId', { unique: false });
+      }
+      if (!db.objectStoreNames.contains('restaurantEntries')) {
+        const s = db.createObjectStore('restaurantEntries', { keyPath: 'id' });
+        s.createIndex('tripId', 'tripId', { unique: false });
+      }
+      if (!db.objectStoreNames.contains('vacationYears')) {
+        db.createObjectStore('vacationYears', { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains('vacationDays')) {
+        db.createObjectStore('vacationDays', { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains('holidayDays')) {
+        db.createObjectStore('holidayDays', { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains('permisoDays')) {
+        db.createObjectStore('permisoDays', { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains('lactanciaDays')) {
+        db.createObjectStore('lactanciaDays', { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains('annotations')) {
+        db.createObjectStore('annotations', { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains('readings')) {
+        db.createObjectStore('readings', { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains('readingYears')) {
+        db.createObjectStore('readingYears', { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains('carFuelEntries')) {
+        db.createObjectStore('carFuelEntries', { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains('carFuelYears')) {
+        db.createObjectStore('carFuelYears', { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains('carInsuranceEntries')) {
+        db.createObjectStore('carInsuranceEntries', { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains('carGarageEntries')) {
+        db.createObjectStore('carGarageEntries', { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains('vehicles')) {
+        db.createObjectStore('vehicles', { keyPath: 'id' });
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+const dbPromise = openDb();
+
+async function dbGetAll(storeName, indexName, query){
+  const db = await dbPromise;
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(storeName, 'readonly');
+    const store = tx.objectStore(storeName);
+    const source = indexName ? store.index(indexName) : store;
+    const req = query !== undefined ? source.getAll(query) : source.getAll();
+    req.onsuccess = () => resolve(req.result || []);
+    req.onerror = () => reject(req.error);
+  });
+}
+async function dbGet(storeName, key){
+  const db = await dbPromise;
+  return new Promise((resolve, reject) => {
+    const req = db.transaction(storeName, 'readonly').objectStore(storeName).get(key);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+async function dbPut(storeName, value){
+  const db = await dbPromise;
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(storeName, 'readwrite');
+    tx.objectStore(storeName).put(value);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+async function dbDelete(storeName, key){
+  const db = await dbPromise;
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(storeName, 'readwrite');
+    tx.objectStore(storeName).delete(key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+async function dbClear(storeName){
+  const db = await dbPromise;
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(storeName, 'readwrite');
+    tx.objectStore(storeName).clear();
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+async function dbDeleteWhere(storeName, indexName, key){
+  const db = await dbPromise;
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(storeName, 'readwrite');
+    const req = tx.objectStore(storeName).index(indexName).openCursor(IDBKeyRange.only(key));
+    req.onsuccess = (e) => {
+      const cursor = e.target.result;
+      if (cursor) { cursor.delete(); cursor.continue(); }
+    };
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+/* ---------- utilidades ---------- */
+function uuid(){
+  if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = Math.random()*16|0, v = c === 'x' ? r : (r&0x3|0x8);
+    return v.toString(16);
+  });
+}
+function escapeHtml(str){
+  return String(str ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function detectFileKind(file){
+  const type = (file.type || '').toLowerCase();
+  const name = file.name.toLowerCase();
+  if (type.startsWith('image/')) return 'IMAGE';
+  if (type === 'application/pdf' || name.endsWith('.pdf')) return 'PDF';
+  if (type.includes('excel') || type.includes('spreadsheet') || name.endsWith('.xls') || name.endsWith('.xlsx')) return 'EXCEL';
+  return 'OTHER';
+}
+
+/* ---------- categorías semilla (perfil tipo Persona) ---------- */
+const DEFAULT_CATEGORIES = [
+  { name: 'DNI', icon: '🪪' },
+  { name: 'Padrón', icon: '🏠' },
+  { name: 'Certificado de nacimiento', icon: '📜' },
+  { name: 'Carnet de conducir', icon: '🚗' },
+];
+
+/* ---------- operaciones de dominio ---------- */
+async function createProfile(name, type){
+  const profile = { id: uuid(), name, type, createdAt: Date.now() };
+  await dbPut('profiles', profile);
+  if (type === 'PERSONA') {
+    for (let i = 0; i < DEFAULT_CATEGORIES.length; i++) {
+      const c = DEFAULT_CATEGORIES[i];
+      await dbPut('categories', { id: uuid(), profileId: profile.id, name: c.name, icon: c.icon, isDefault: true, sortOrder: i });
+    }
+    await dbPut('fields', { id: uuid(), profileId: profile.id, name: 'DNI', value: '', isDefault: true, sortOrder: 0, createdAt: Date.now() });
+  }
+  return profile;
+}
+async function deleteProfileCascade(profileId){
+  const categories = await dbGetAll('categories', 'profileId', profileId);
+  for (const cat of categories) {
+    await dbDeleteWhere('documents', 'categoryId', cat.id);
+    await dbDelete('categories', cat.id);
+  }
+  await dbDeleteWhere('fields', 'profileId', profileId);
+  await dbDelete('profiles', profileId);
+}
+async function createField(profileId, name){
+  const existing = await dbGetAll('fields', 'profileId', profileId);
+  const field = { id: uuid(), profileId, name, value: '', isDefault: false, sortOrder: existing.length, createdAt: Date.now() };
+  await dbPut('fields', field);
+  return field;
+}
+async function updateFieldValue(fieldId, value){
+  const field = await dbGet('fields', fieldId);
+  if (!field) return;
+  field.value = value;
+  await dbPut('fields', field);
+}
+async function deleteField(fieldId){
+  await dbDelete('fields', fieldId);
+}
+
+/* ---------- Viajes ---------- */
+const TRIP_EXPENSE_TYPES = ['Alojamiento', 'Restauración', 'Entradas', 'Gasoil', 'Avión', 'Varios'];
+
+async function ensureRestaurantesTrip(){
+  const trips = await dbGetAll('trips');
+  if (!trips.some(t => t.isDefault)) {
+    await dbPut('trips', { id: uuid(), name: 'Restaurantes', isDefault: true, createdAt: Date.now() });
+  }
+}
+async function createTrip(name){
+  const trip = { id: uuid(), name, isDefault: false, createdAt: Date.now() };
+  await dbPut('trips', trip);
+  return trip;
+}
+async function deleteTripCascade(tripId){
+  await dbDeleteWhere('tripExpenses', 'tripId', tripId);
+  await dbDeleteWhere('tripTickets', 'tripId', tripId);
+  await dbDeleteWhere('restaurantEntries', 'tripId', tripId);
+  await dbDelete('trips', tripId);
+}
+async function addExpense(tripId, data){
+  const expense = { id: uuid(), tripId, ...data, createdAt: Date.now() };
+  await dbPut('tripExpenses', expense);
+  return expense;
+}
+async function updateExpense(expense){ await dbPut('tripExpenses', expense); }
+async function deleteExpense(id){ await dbDelete('tripExpenses', id); }
+
+async function addTicket(tripId, concepto, file){
+  const ticket = { id: uuid(), tripId, concepto, photoBlob: file, mimeType: file.type, createdAt: Date.now() };
+  await dbPut('tripTickets', ticket);
+  return ticket;
+}
+async function deleteTicket(id){ await dbDelete('tripTickets', id); }
+
+async function addRestaurantEntry(tripId, data, file){
+  const entry = {
+    id: uuid(), tripId, ...data,
+    photoBlob: file || null, mimeType: file ? file.type : null,
+    createdAt: Date.now()
+  };
+  await dbPut('restaurantEntries', entry);
+  return entry;
+}
+async function updateRestaurantEntry(entry){ await dbPut('restaurantEntries', entry); }
+async function deleteRestaurantEntry(id){ await dbDelete('restaurantEntries', id); }
+
+/* ---------- Vacaciones ---------- */
+const MONTH_NAMES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const WEEKDAY_LETTERS = ['L','M','X','J','V','S','D'];
+
+function daysInMonth(year, month){ return new Date(year, month + 1, 0).getDate(); }
+function firstWeekdayMondayIndex(year, month){
+  const d = new Date(year, month, 1).getDay(); // 0=domingo..6=sábado
+  return (d + 6) % 7; // convertido a lunes=0..domingo=6
+}
+async function getVacationYearRecord(year){
+  const all = await dbGetAll('vacationYears');
+  return all.find(y => y.year === year) || null;
+}
+async function ensureVacationYearRecord(year){
+  let record = await getVacationYearRecord(year);
+  if (!record) {
+    record = { id: uuid(), year, assignedDays: 0 };
+    await dbPut('vacationYears', record);
+  }
+  return record;
+}
+async function setVacationYearAssignedDays(year, days){
+  const record = await ensureVacationYearRecord(year);
+  record.assignedDays = days;
+  await dbPut('vacationYears', record);
+}
+async function toggleVacationDay(dateStr){
+  const all = await dbGetAll('vacationDays');
+  const existing = all.find(d => d.dateStr === dateStr);
+  if (existing) await dbDelete('vacationDays', existing.id);
+  else await dbPut('vacationDays', { id: uuid(), dateStr });
+}
+async function toggleHolidayDay(dateStr){
+  const all = await dbGetAll('holidayDays');
+  const existing = all.find(d => d.dateStr === dateStr);
+  if (existing) await dbDelete('holidayDays', existing.id);
+  else await dbPut('holidayDays', { id: uuid(), dateStr });
+}
+async function togglePermisoDay(dateStr){
+  const all = await dbGetAll('permisoDays');
+  const existing = all.find(d => d.dateStr === dateStr);
+  if (existing) await dbDelete('permisoDays', existing.id);
+  else await dbPut('permisoDays', { id: uuid(), dateStr });
+}
+async function toggleLactanciaDay(dateStr){
+  const all = await dbGetAll('lactanciaDays');
+  const existing = all.find(d => d.dateStr === dateStr);
+  if (existing) await dbDelete('lactanciaDays', existing.id);
+  else await dbPut('lactanciaDays', { id: uuid(), dateStr });
+}
+async function addAnnotation(startDate, endDate, concepto){
+  const annotation = { id: uuid(), startDate, endDate: endDate || startDate, concepto, createdAt: Date.now() };
+  await dbPut('annotations', annotation);
+  return annotation;
+}
+async function deleteAnnotation(id){ await dbDelete('annotations', id); }
+function formatDateRange(start, end){
+  const fmt = (s) => { const [y, m, d] = s.split('-'); return `${d}/${m}/${y}`; };
+  if (!start) return '';
+  if (!end || end === start) return fmt(start);
+  return `${fmt(start)} – ${fmt(end)}`;
+}
+function isWeekendDate(dateStr){
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const day = new Date(y, m - 1, d).getDay();
+  return day === 0 || day === 6;
+}
+
+/* ---------- Lecturas ---------- */
+function readingYearLabel(yearKey){ return yearKey === 'PRE2022' ? 'PRE 2022' : yearKey; }
+function sortReadingYearKeys(keys){
+  return keys.sort((a, b) => {
+    if (a === 'PRE2022') return -1;
+    if (b === 'PRE2022') return 1;
+    return parseInt(a) - parseInt(b);
+  });
+}
+async function ensurePre2022Bucket(){
+  const buckets = await dbGetAll('readingYears');
+  if (!buckets.some(b => b.yearKey === 'PRE2022')) {
+    await dbPut('readingYears', { id: uuid(), yearKey: 'PRE2022', createdAt: Date.now() });
+  }
+}
+async function ensureReadingYearBucket(yearKey){
+  const buckets = await dbGetAll('readingYears');
+  let bucket = buckets.find(b => b.yearKey === yearKey);
+  if (!bucket) {
+    bucket = { id: uuid(), yearKey, createdAt: Date.now() };
+    await dbPut('readingYears', bucket);
+  }
+  return bucket;
+}
+async function deleteReadingYearCascade(yearKey){
+  const all = await dbGetAll('readings');
+  for (const r of all.filter(r => r.yearKey === yearKey)) await dbDelete('readings', r.id);
+  const buckets = await dbGetAll('readingYears');
+  const bucket = buckets.find(b => b.yearKey === yearKey);
+  if (bucket) await dbDelete('readingYears', bucket.id);
+}
+async function clearAllReadings(){
+  await dbClear('readings');
+  await dbClear('readingYears');
+  await ensurePre2022Bucket();
+}
+async function getNextReadingDisplayId(){
+  const all = await dbGetAll('readings');
+  return all.reduce((max, r) => Math.max(max, r.displayId || 0), 0) + 1;
+}
+async function addReading(yearKey, data){
+  const displayId = await getNextReadingDisplayId();
+  const reading = { id: uuid(), displayId, yearKey, ...data, createdAt: Date.now() };
+  await dbPut('readings', reading);
+  return reading;
+}
+async function updateReading(reading){ await dbPut('readings', reading); }
+async function deleteReading(id){ await dbDelete('readings', id); }
+
+function resolveReadingYearKey(raw){
+  const normalized = (raw || '').toString().trim().toUpperCase();
+  if (!normalized || normalized.includes('PRE')) return 'PRE2022';
+  const yearMatch = normalized.match(/(\d{4})/);
+  if (!yearMatch) return 'PRE2022';
+  const year = parseInt(yearMatch[1]);
+  if (isNaN(year) || year < 2022) return 'PRE2022';
+  return String(year);
+}
+function normalizeReadingKey(s){ return (s || '').toString().trim().toLowerCase().replace(/\s+/g, ' '); }
+async function importReadingsFromEntries(entries){
+  let nextId = await getNextReadingDisplayId();
+  const existing = await dbGetAll('readings');
+  let updated = 0, created = 0;
+  for (const e of entries) {
+    const yearKey = resolveReadingYearKey(e.anoLecturaRaw);
+    await ensureReadingYearBucket(yearKey);
+    const match = existing.find(r =>
+      normalizeReadingKey(r.titulo) === normalizeReadingKey(e.titulo) &&
+      normalizeReadingKey(r.autor) === normalizeReadingKey(e.autor)
+    );
+    if (match) {
+      match.yearKey = yearKey;
+      match.anoEscrito = e.anoEscrito || match.anoEscrito;
+      match.premios = e.premios || match.premios;
+      await dbPut('readings', match);
+      updated++;
+    } else {
+      const reading = {
+        id: uuid(), displayId: nextId++, yearKey,
+        titulo: e.titulo, autor: e.autor, anoEscrito: e.anoEscrito, premios: e.premios,
+        createdAt: Date.now()
+      };
+      await dbPut('readings', reading);
+      existing.push(reading);
+      created++;
+    }
+  }
+  return { updated, created };
+}
+
+/* ---------- Escritor de .xlsx sin dependencias externas -----------
+   Reutiliza buildZip() (definido más abajo junto al backup) para meter
+   los XML mínimos de un libro OOXML válido: Content_Types, rels,
+   workbook.xml y una única hoja con cadenas "inline" (sin sharedStrings). */
+function colIndexToLetter(idx){
+  let n = idx + 1, s = '';
+  while (n > 0) { const rem = (n - 1) % 26; s = String.fromCharCode(65 + rem) + s; n = Math.floor((n - 1) / 26); }
+  return s;
+}
+function xmlEscape(s){
+  return (s ?? '').toString()
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+}
+function buildSheetXml(rows){
+  const rowsXml = rows.map((row, rIdx) => {
+    const r = rIdx + 1;
+    const cellsXml = row.map((val, cIdx) => {
+      const ref = colIndexToLetter(cIdx) + r;
+      if (typeof val === 'number' && isFinite(val)) return `<c r="${ref}"><v>${val}</v></c>`;
+      return `<c r="${ref}" t="inlineStr"><is><t xml:space="preserve">${xmlEscape(val)}</t></is></c>`;
+    }).join('');
+    return `<row r="${r}">${cellsXml}</row>`;
+  }).join('');
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>${rowsXml}</sheetData></worksheet>`;
+}
+async function exportReadingsToXlsx(){
+  const all = await dbGetAll('readings');
+  if (all.length === 0) { alert('No hay lecturas para exportar todavía.'); return; }
+  const buckets = await dbGetAll('readingYears');
+  const yearKeys = sortReadingYearKeys(buckets.map(b => b.yearKey));
+  const orderIndex = Object.fromEntries(yearKeys.map((k, i) => [k, i]));
+  all.sort((a, b) => (orderIndex[a.yearKey] ?? 0) - (orderIndex[b.yearKey] ?? 0) || (a.displayId - b.displayId));
+
+  const header = ['ID', 'Año Lectura', 'Título', 'Autor', 'Año Escrito', 'Premios / Reconocimientos'];
+  const rows = [header, ...all.map(r => [
+    r.displayId, readingYearLabel(r.yearKey), r.titulo || '', r.autor || '', r.anoEscrito || '', r.premios || ''
+  ])];
+  const sheetXml = buildSheetXml(rows);
+
+  const contentTypes = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/></Types>`;
+  const rootRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`;
+  const workbookXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Lecturas" sheetId="1" r:id="rId1"/></sheets></workbook>`;
+  const workbookRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>`;
+
+  const encoder = new TextEncoder();
+  const entries = [
+    { name: '[Content_Types].xml', data: encoder.encode(contentTypes) },
+    { name: '_rels/.rels', data: encoder.encode(rootRels) },
+    { name: 'xl/workbook.xml', data: encoder.encode(workbookXml) },
+    { name: 'xl/_rels/workbook.xml.rels', data: encoder.encode(workbookRels) },
+    { name: 'xl/worksheets/sheet1.xml', data: encoder.encode(sheetXml) },
+  ];
+  const blob = await buildZip(entries);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `DocuFest_Lecturas_${new Date().toISOString().slice(0,10)}.xlsx`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+
+/* ---------- Lector de .xlsx sin dependencias externas -----------
+   Un .xlsx es un ZIP; buscamos el índice central del ZIP, extraemos
+   xl/sharedStrings.xml y la primera hoja (xl/worksheets/sheetN.xml),
+   descomprimimos con la API nativa DecompressionStream (deflate-raw,
+   sin necesidad de librerías) y parseamos el XML resultante con
+   DOMParser, también nativo del navegador. */
+async function inflateRaw(bytes){
+  const ds = new DecompressionStream('deflate-raw');
+  const stream = new Blob([bytes]).stream().pipeThrough(ds);
+  const buf = await new Response(stream).arrayBuffer();
+  return new Uint8Array(buf);
+}
+function parseZipCentralDirectory(fileBuffer){
+  const data = new Uint8Array(fileBuffer);
+  const view = new DataView(fileBuffer);
+  let eocdOffset = -1;
+  const maxCommentSearch = Math.min(data.length, 66000);
+  for (let i = data.length - 22; i >= data.length - maxCommentSearch && i >= 0; i--) {
+    if (view.getUint32(i, true) === 0x06054b50) { eocdOffset = i; break; }
+  }
+  if (eocdOffset === -1) throw new Error('No es un archivo .xlsx válido (no se encontró el índice ZIP).');
+  const cdEntries = view.getUint16(eocdOffset + 10, true);
+  const cdOffset = view.getUint32(eocdOffset + 16, true);
+  const decoder = new TextDecoder('utf-8');
+  const entries = [];
+  let offset = cdOffset;
+  for (let i = 0; i < cdEntries; i++) {
+    const sig = view.getUint32(offset, true);
+    if (sig !== 0x02014b50) break;
+    const method = view.getUint16(offset + 10, true);
+    const compSize = view.getUint32(offset + 20, true);
+    const nameLen = view.getUint16(offset + 28, true);
+    const extraLen = view.getUint16(offset + 30, true);
+    const commentLen = view.getUint16(offset + 32, true);
+    const localHeaderOffset = view.getUint32(offset + 42, true);
+    const name = decoder.decode(data.slice(offset + 46, offset + 46 + nameLen));
+    entries.push({ name, method, compSize, localHeaderOffset });
+    offset += 46 + nameLen + extraLen + commentLen;
+  }
+  return entries;
+}
+async function extractZipEntry(fileBuffer, entry){
+  const data = new Uint8Array(fileBuffer);
+  const view = new DataView(fileBuffer);
+  const lhNameLen = view.getUint16(entry.localHeaderOffset + 26, true);
+  const lhExtraLen = view.getUint16(entry.localHeaderOffset + 28, true);
+  const dataStart = entry.localHeaderOffset + 30 + lhNameLen + lhExtraLen;
+  const compData = data.slice(dataStart, dataStart + entry.compSize);
+  if (entry.method === 0) return compData;
+  if (entry.method === 8) return await inflateRaw(compData);
+  throw new Error('Método de compresión ZIP no soportado: ' + entry.method);
+}
+async function readZipEntryText(fileBuffer, entries, path){
+  const entry = entries.find(e => e.name === path);
+  if (!entry) return null;
+  const bytes = await extractZipEntry(fileBuffer, entry);
+  return new TextDecoder('utf-8').decode(bytes);
+}
+function parseSharedStrings(xmlText){
+  if (!xmlText) return [];
+  const doc = new DOMParser().parseFromString(xmlText, 'application/xml');
+  const siList = doc.getElementsByTagName('si');
+  const strings = [];
+  for (const si of siList) {
+    let text = '';
+    const tNodes = si.getElementsByTagName('t');
+    for (const t of tNodes) text += t.textContent;
+    strings.push(text);
+  }
+  return strings;
+}
+function colLetterToIndex(ref){
+  const letters = ref.match(/[A-Z]+/)[0];
+  let idx = 0;
+  for (let i = 0; i < letters.length; i++) idx = idx * 26 + (letters.charCodeAt(i) - 64);
+  return idx - 1;
+}
+function parseSheetRows(xmlText, sharedStrings){
+  const doc = new DOMParser().parseFromString(xmlText, 'application/xml');
+  const rows = doc.getElementsByTagName('row');
+  const result = [];
+  for (const row of rows) {
+    const cells = row.getElementsByTagName('c');
+    const rowData = [];
+    for (const cell of cells) {
+      const ref = cell.getAttribute('r');
+      if (!ref) continue;
+      const colIndex = colLetterToIndex(ref);
+      const type = cell.getAttribute('t');
+      let value = '';
+      if (type === 'inlineStr') {
+        const isNode = cell.getElementsByTagName('t')[0];
+        value = isNode ? isNode.textContent : '';
+      } else {
+        const vNode = cell.getElementsByTagName('v')[0];
+        value = vNode ? vNode.textContent : '';
+        if (type === 's') value = sharedStrings[parseInt(value)] || '';
+      }
+      rowData[colIndex] = value;
+    }
+    result.push(rowData);
+  }
+  return result;
+}
+async function parseXlsxReadings(file){
+  if (!window.DecompressionStream) {
+    throw new Error('Este navegador no soporta la descompresión necesaria para leer Excel. Actualiza Chrome e inténtalo de nuevo.');
+  }
+  const buffer = await file.arrayBuffer();
+  const entries = parseZipCentralDirectory(buffer);
+  const sharedStringsXml = await readZipEntryText(buffer, entries, 'xl/sharedStrings.xml');
+  const sharedStrings = parseSharedStrings(sharedStringsXml);
+  let sheetPath = 'xl/worksheets/sheet1.xml';
+  if (!entries.some(e => e.name === sheetPath)) {
+    const fallback = entries.find(e => /^xl\/worksheets\/sheet\d+\.xml$/.test(e.name));
+    if (!fallback) throw new Error('No se encontró ninguna hoja de datos dentro del Excel.');
+    sheetPath = fallback.name;
+  }
+  const sheetXml = await readZipEntryText(buffer, entries, sheetPath);
+  const rows = parseSheetRows(sheetXml, sharedStrings);
+  const result = [];
+  for (let i = 1; i < rows.length; i++) {
+    const r = rows[i] || [];
+    const titulo = (r[2] || '').toString().trim();
+    if (!titulo) continue;
+    result.push({
+      anoLecturaRaw: (r[1] || '').toString().trim(),
+      titulo,
+      autor: (r[3] || '').toString().trim(),
+      anoEscrito: (r[4] || '').toString().trim(),
+      premios: (r[5] || '').toString().trim()
+    });
+  }
+  return result;
+}
+
+async function createCategory(profileId, name, icon){
+  const existing = await dbGetAll('categories', 'profileId', profileId);
+  const category = { id: uuid(), profileId, name, icon: icon || '📁', isDefault: false, sortOrder: existing.length };
+  await dbPut('categories', category);
+  return category;
+}
+async function deleteCategoryCascade(categoryId){
+  await dbDeleteWhere('documents', 'categoryId', categoryId);
+  await dbDelete('categories', categoryId);
+}
+async function addDocument(profileId, categoryId, file, label){
+  const doc = {
+    id: uuid(), profileId, categoryId,
+    label: label || null,
+    fileName: file.name,
+    mimeType: file.type || 'application/octet-stream',
+    fileKind: detectFileKind(file),
+    sizeBytes: file.size,
+    blob: file,
+    createdAt: Date.now()
+  };
+  await dbPut('documents', doc);
+  if (isAutoArchiveEnabled()) {
+    const profile = await dbGet('profiles', profileId);
+    const category = await dbGet('categories', categoryId);
+    await archiveSingleDocument(doc, profile && profile.name, category && category.name);
+  }
+  return doc;
+}
+
+/* ---------- Auto-archivado en carpetas reales (vía .zip en Descargas) ----------
+   Chrome en Android no permite que una página web elija ni escriba en una
+   carpeta real del teléfono (esa función solo existe en Chrome de escritorio).
+   La forma fiable de conseguir carpetas reales Perfil/Categoría/archivo es
+   generar un .zip con esa estructura y dejar que Android lo descargue a
+   "Descargas"; al extraerlo con cualquier gestor de archivos, esas carpetas
+   aparecen de verdad en el teléfono. Si extraes siempre sobre el mismo
+   destino, las carpetas se van completando en vez de duplicarse. */
+const AUTO_ARCHIVE_KEY = 'docufest_auto_archive';
+function isAutoArchiveEnabled(){
+  return localStorage.getItem(AUTO_ARCHIVE_KEY) !== 'false'; // activado por defecto
+}
+function setAutoArchiveEnabled(value){
+  localStorage.setItem(AUTO_ARCHIVE_KEY, value ? 'true' : 'false');
+}
+async function archiveSingleDocument(doc, profileName, categoryName){
+  const safe = (s) => (s || 'sin_nombre').toString().replace(/[\\/:*?"<>|]/g, '_');
+  const labelPart = doc.label ? safe(doc.label) + '_' : '';
+  const entryName = `${safe(profileName)}/${safe(categoryName)}/${labelPart}${safe(doc.fileName)}`;
+  const buffer = await doc.blob.arrayBuffer();
+  const zipBlob = await buildZip([{ name: entryName, data: new Uint8Array(buffer), date: new Date(doc.createdAt) }]);
+  const url = URL.createObjectURL(zipBlob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `DocuFest_${safe(profileName)}_${safe(categoryName)}_${labelPart || safe(doc.fileName)}.zip`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+
+/* ---------- CRC32 + ZIP (sin compresión, método STORE) ----------
+   Permite exportar un backup .zip real, sin librerías externas,
+   con estructura de carpetas Perfil/Categoría/archivo. */
+const CRC_TABLE = (() => {
+  const table = [];
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+    table[n] = c >>> 0;
+  }
+  return table;
+})();
+function crc32(bytes){
+  let crc = 0xFFFFFFFF;
+  for (let i = 0; i < bytes.length; i++) crc = (crc >>> 8) ^ CRC_TABLE[(crc ^ bytes[i]) & 0xFF];
+  return (crc ^ 0xFFFFFFFF) >>> 0;
+}
+function toDosDateTime(date){
+  const year = Math.max(date.getFullYear(), 1980) - 1980;
+  const dosTime = (date.getHours() << 11) | (date.getMinutes() << 5) | (date.getSeconds() >> 1);
+  const dosDate = (year << 9) | ((date.getMonth() + 1) << 5) | date.getDate();
+  return { dosTime, dosDate };
+}
+async function buildZip(entries){
+  const encoder = new TextEncoder();
+  let offset = 0;
+  const localParts = [];
+  const centralParts = [];
+  for (const entry of entries) {
+    const nameBytes = encoder.encode(entry.name);
+    const data = entry.data;
+    const crc = crc32(data);
+    const { dosTime, dosDate } = toDosDateTime(entry.date || new Date());
+
+    const local = new DataView(new ArrayBuffer(30));
+    local.setUint32(0, 0x04034b50, true);
+    local.setUint16(4, 20, true);
+    local.setUint16(6, 0, true);
+    local.setUint16(8, 0, true);
+    local.setUint16(10, dosTime, true);
+    local.setUint16(12, dosDate, true);
+    local.setUint32(14, crc, true);
+    local.setUint32(18, data.length, true);
+    local.setUint32(22, data.length, true);
+    local.setUint16(26, nameBytes.length, true);
+    local.setUint16(28, 0, true);
+
+    const localOffset = offset;
+    localParts.push(new Uint8Array(local.buffer), nameBytes, data);
+    offset += 30 + nameBytes.length + data.length;
+
+    const central = new DataView(new ArrayBuffer(46));
+    central.setUint32(0, 0x02014b50, true);
+    central.setUint16(4, 20, true);
+    central.setUint16(6, 20, true);
+    central.setUint16(8, 0, true);
+    central.setUint16(10, 0, true);
+    central.setUint16(12, dosTime, true);
+    central.setUint16(14, dosDate, true);
+    central.setUint32(16, crc, true);
+    central.setUint32(20, data.length, true);
+    central.setUint32(24, data.length, true);
+    central.setUint16(28, nameBytes.length, true);
+    central.setUint16(30, 0, true);
+    central.setUint16(32, 0, true);
+    central.setUint16(34, 0, true);
+    central.setUint16(36, 0, true);
+    central.setUint32(38, 0, true);
+    central.setUint32(42, localOffset, true);
+    centralParts.push(new Uint8Array(central.buffer), nameBytes);
+  }
+  const centralDirOffset = offset;
+  let centralSize = 0;
+  for (const part of centralParts) centralSize += part.length;
+
+  const eocd = new DataView(new ArrayBuffer(22));
+  eocd.setUint32(0, 0x06054b50, true);
+  eocd.setUint16(4, 0, true);
+  eocd.setUint16(6, 0, true);
+  eocd.setUint16(8, entries.length, true);
+  eocd.setUint16(10, entries.length, true);
+  eocd.setUint32(12, centralSize, true);
+  eocd.setUint32(16, centralDirOffset, true);
+  eocd.setUint16(20, 0, true);
+
+  return new Blob([...localParts, ...centralParts, new Uint8Array(eocd.buffer)], { type: 'application/zip' });
+}
+async function exportBackup(scopedProfileId){
+  const profiles = await dbGetAll('profiles');
+  const categories = await dbGetAll('categories');
+  const documents = await dbGetAll('documents');
+  const profileMap = Object.fromEntries(profiles.map(p => [p.id, p]));
+  const categoryMap = Object.fromEntries(categories.map(c => [c.id, c]));
+  const relevant = documents.filter(d => !scopedProfileId || d.profileId === scopedProfileId);
+  if (relevant.length === 0) { alert('No hay documentos para exportar todavía.'); return; }
+
+  const safe = (s) => (s || 'sin_nombre').toString().replace(/[\\/:*?"<>|]/g, '_');
+  const usedNames = new Set();
+  const entries = [];
+  for (const doc of relevant) {
+    const profile = profileMap[doc.profileId];
+    const category = categoryMap[doc.categoryId];
+    const labelPart = doc.label ? safe(doc.label) + '_' : '';
+    let base = `${safe(profile && profile.name)}/${safe(category && category.name)}/${labelPart}${safe(doc.fileName)}`;
+    let finalName = base, i = 1;
+    while (usedNames.has(finalName)) finalName = `${base}_(${i++})`;
+    usedNames.add(finalName);
+    const buffer = await doc.blob.arrayBuffer();
+    entries.push({ name: finalName, data: new Uint8Array(buffer), date: new Date(doc.createdAt) });
+  }
+  const zipBlob = await buildZip(entries);
+  const url = URL.createObjectURL(zipBlob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `DocuFest_backup_${new Date().toISOString().slice(0,10)}.zip`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+
+/* ---------- estado y navegación (con soporte del botón "atrás" del móvil) ---------- */
+let currentProfileId = null;
+let currentCategoryId = null;
+let currentDocumentId = null;
+let currentTripId = null;
+let selectedProfileType = null;
+let objectUrlsToRevoke = [];
+let expensesEditMode = false;
+let ticketsEditMode = false;
+let restaurantEditMode = false;
+let pendingRestPhoto = null;
+let vacationEditMode = false;
+let festivoEditMode = false;
+let permisoEditMode = false;
+let lactanciaEditMode = false;
+let annotationsEditMode = false;
+let currentReadingYearKey = null;
+let readingsEditMode = false;
+let currentVacationYear = new Date().getFullYear();
+let currentCarFuelYearKey = null;
+let carFuelEditMode = false;
+let carInsuranceEditMode = false;
+let carGarageEditMode = false;
+let carFuelVehicleFilter = 'all';
+let carInsuranceVehicleFilter = 'all';
+let carGarageVehicleFilter = 'all';
+let vehiclesEditMode = false;
+
+function go(view, params = {}){
+  const state = { view, ...params };
+  history.pushState(state, '', '#' + view);
+  applyState(state);
+}
+window.addEventListener('popstate', (e) => applyState(e.state || { view: 'welcome' }));
+
+async function applyState(state){
+  currentProfileId = state.profileId || null;
+  currentCategoryId = state.categoryId || null;
+  currentTripId = state.tripId || null;
+  document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
+  const el = document.getElementById('screen-' + state.view);
+  if (el) el.classList.add('active');
+
+  if (state.view === 'welcome') await refreshWelcomeButton();
+  if (state.view === 'profiles') await renderProfiles();
+  if (state.view === 'categories') await renderCategories(currentProfileId);
+  if (state.view === 'category-detail') await renderCategoryDetail(currentCategoryId);
+  if (state.view === 'search') await renderSearch(state.scopedProfileId || null);
+  if (state.view === 'trips') await renderTrips();
+  if (state.view === 'trip-detail') await renderTripDetail(currentTripId);
+  if (state.view === 'vacations') await renderVacationScreen(currentVacationYear);
+  if (state.view === 'readings-years') await renderReadingYears();
+  if (state.view === 'readings-detail') { currentReadingYearKey = state.yearKey; await renderReadingsDetail(state.yearKey); }
+  if (state.view === 'readings-stats') await renderReadingsStats();
+  if (state.view === 'car-vehicles') await renderVehiclesScreen();
+  if (state.view === 'car-fuel-years') await renderCarFuelYears();
+  if (state.view === 'car-fuel-detail') { currentCarFuelYearKey = state.yearKey; await renderCarFuelDetail(state.yearKey); }
+  if (state.view === 'car-insurance') await renderCarInsuranceScreen();
+  if (state.view === 'car-garage') await renderCarGarageScreen();
+}
+
+/* ---------- render: bienvenida ---------- */
+async function refreshWelcomeButton(){
+  const profiles = await dbGetAll('profiles');
+  document.getElementById('btnOpenProfile').disabled = profiles.length === 0;
+}
+
+/* ---------- render: perfiles ---------- */
+async function renderProfiles(){
+  document.getElementById('toggleAutoArchive').checked = isAutoArchiveEnabled();
+  const profiles = await dbGetAll('profiles');
+  profiles.sort((a,b) => b.createdAt - a.createdAt);
+  const list = document.getElementById('profilesList');
+  const empty = document.getElementById('profilesEmpty');
+  if (profiles.length === 0) { list.innerHTML = ''; empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+  list.innerHTML = profiles.map(p => `
+    <div class="card profile-card" data-id="${p.id}">
+      <button class="icon-btn danger" data-action="delete-profile" data-id="${p.id}">✕</button>
+      <div class="card-title">${escapeHtml(p.name)}</div>
+      <div class="card-muted">${p.type === 'PERSONA' ? 'Persona' : 'Otros'}</div>
+    </div>
+  `).join('');
+}
+
+/* ---------- render: categorías ---------- */
+let fieldsEditMode = false;
+
+async function renderFieldsView(profileId){
+  const fields = await dbGetAll('fields', 'profileId', profileId);
+  fields.sort((a,b) => a.sortOrder - b.sortOrder);
+  const container = document.getElementById('fieldsView');
+  if (fields.length === 0) {
+    container.innerHTML = '<p class="help-text" style="padding:10px 0;">Sin datos añadidos todavía. Toca "Modificar ficha" para crear el primero.</p>';
+    return;
+  }
+  container.innerHTML = fields.map(f => `
+    <div class="field-row-view">
+      <span class="field-row-label">${escapeHtml(f.name)}</span>
+      <span class="field-row-value">${f.value ? escapeHtml(f.value) : '—'}</span>
+    </div>
+  `).join('');
+}
+async function renderFieldsEdit(profileId){
+  const fields = await dbGetAll('fields', 'profileId', profileId);
+  fields.sort((a,b) => a.sortOrder - b.sortOrder);
+  document.getElementById('fieldsEditList').innerHTML = fields.map(f => `
+    <div class="field-row">
+      <label class="field-label">${escapeHtml(f.name)}</label>
+      <div class="field-value-row">
+        <input type="text" class="field-value-input" data-id="${f.id}" value="${escapeHtml(f.value || '')}" placeholder="Escribe aquí…">
+        ${f.isDefault ? '' : `<button class="icon-btn danger" data-action="delete-field" data-id="${f.id}" style="position:static;">✕</button>`}
+      </div>
+    </div>
+  `).join('');
+}
+async function renderFields(profileId){
+  await renderFieldsView(profileId);
+  await renderFieldsEdit(profileId);
+}
+function resetFieldsEditMode(){
+  fieldsEditMode = false;
+  document.getElementById('fieldsView').style.display = 'block';
+  document.getElementById('fieldsEdit').style.display = 'none';
+  document.getElementById('btnToggleFieldsEdit').textContent = '✏️ Modificar ficha';
+}
+
+async function renderCategories(profileId){
+  const profile = await dbGet('profiles', profileId);
+  document.getElementById('categoriesTitle').textContent = profile ? profile.name : '';
+  resetFieldsEditMode();
+  await renderFields(profileId);
+  const categories = await dbGetAll('categories', 'profileId', profileId);
+  categories.sort((a,b) => a.sortOrder - b.sortOrder);
+  const docs = await dbGetAll('documents', 'profileId', profileId);
+  const counts = {};
+  docs.forEach(d => counts[d.categoryId] = (counts[d.categoryId] || 0) + 1);
+  document.getElementById('categoriesList').innerHTML = categories.map(c => `
+    <div class="card category-card" data-id="${c.id}">
+      ${c.isDefault ? '' : `<button class="icon-btn danger" data-action="delete-category" data-id="${c.id}">✕</button>`}
+      <div class="category-icon">${c.icon}</div>
+      <div class="card-title">${escapeHtml(c.name)}</div>
+      <div class="card-muted">${counts[c.id] || 0} archivo(s)</div>
+    </div>
+  `).join('');
+}
+
+/* ---------- render: detalle de categoría ---------- */
+async function renderCategoryDetail(categoryId){
+  objectUrlsToRevoke.forEach(u => URL.revokeObjectURL(u));
+  objectUrlsToRevoke = [];
+  const category = await dbGet('categories', categoryId);
+  document.getElementById('categoryDetailTitle').textContent = category ? category.name : '';
+  const docs = await dbGetAll('documents', 'categoryId', categoryId);
+  docs.sort((a,b) => b.createdAt - a.createdAt);
+  const list = document.getElementById('documentsList');
+  const empty = document.getElementById('documentsEmpty');
+  if (docs.length === 0) { list.innerHTML = ''; empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+  list.innerHTML = docs.map(d => {
+    let thumb;
+    if (d.fileKind === 'IMAGE') {
+      const url = URL.createObjectURL(d.blob);
+      objectUrlsToRevoke.push(url);
+      thumb = `<img src="${url}" class="doc-thumb">`;
+    } else if (d.fileKind === 'PDF') thumb = `<div class="doc-icon">📄</div>`;
+    else if (d.fileKind === 'EXCEL') thumb = `<div class="doc-icon">📊</div>`;
+    else thumb = `<div class="doc-icon">📎</div>`;
+    return `
+      <div class="card document-card" data-id="${d.id}">
+        <button class="icon-btn danger" data-action="delete-document" data-id="${d.id}">✕</button>
+        ${thumb}
+        <div class="doc-label">${escapeHtml(d.label || d.fileName)}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+/* ---------- visor de documento (modal) ---------- */
+async function openViewer(documentId){
+  const doc = await dbGet('documents', documentId);
+  if (!doc) return;
+  currentDocumentId = documentId;
+  currentProfileId = doc.profileId;
+  currentCategoryId = doc.categoryId;
+  const url = URL.createObjectURL(doc.blob);
+  objectUrlsToRevoke.push(url);
+  const body = document.getElementById('viewerBody');
+  if (doc.fileKind === 'IMAGE') {
+    body.innerHTML = `<img src="${url}" class="viewer-image">`;
+  } else if (doc.fileKind === 'PDF') {
+    body.innerHTML = `<p class="card-muted">Vista previa no disponible dentro de la app.</p>
+      <button class="btn-outline" id="btnOpenPdf">Abrir PDF en el visor del móvil</button>`;
+    document.getElementById('btnOpenPdf').addEventListener('click', () => window.open(url, '_blank'));
+  } else {
+    body.innerHTML = `<p class="card-muted">Descarga el archivo para abrirlo con la app correspondiente (Excel, etc.).</p>`;
+  }
+  document.getElementById('viewerTitle').textContent = doc.label || doc.fileName;
+  const downloadBtn = document.getElementById('viewerDownload');
+  downloadBtn.href = url;
+  downloadBtn.download = doc.fileName;
+
+  document.getElementById('modalViewer').classList.add('active');
+}
+
+/* ---------- búsqueda ---------- */
+async function renderSearch(scopedProfileId){
+  document.getElementById('toggleScope').style.display = scopedProfileId ? 'flex' : 'none';
+  document.getElementById('toggleScope').dataset.profileId = scopedProfileId || '';
+  document.getElementById('toggleScopeCheckbox').checked = !!scopedProfileId;
+  document.getElementById('searchInput').value = '';
+  document.getElementById('searchResults').innerHTML = '';
+}
+async function runSearch(query){
+  const scoped = document.getElementById('toggleScopeCheckbox').checked
+    ? document.getElementById('toggleScope').dataset.profileId
+    : null;
+  const q = query.trim().toLowerCase();
+  if (!q) { document.getElementById('searchResults').innerHTML = ''; return; }
+  const allDocs = await dbGetAll('documents');
+  const profiles = await dbGetAll('profiles');
+  const categories = await dbGetAll('categories');
+  const profileMap = Object.fromEntries(profiles.map(p => [p.id, p]));
+  const categoryMap = Object.fromEntries(categories.map(c => [c.id, c]));
+  const filtered = allDocs.filter(d => {
+    if (scoped && d.profileId !== scoped) return false;
+    return `${d.fileName} ${d.label || ''}`.toLowerCase().includes(q);
+  });
+  filtered.sort((a,b) => b.createdAt - a.createdAt);
+  document.getElementById('searchResults').innerHTML = filtered.map(d => {
+    const profile = profileMap[d.profileId];
+    const category = categoryMap[d.categoryId];
+    return `
+      <div class="card search-result" data-id="${d.id}">
+        <div class="card-title">${escapeHtml(d.label || d.fileName)}</div>
+        <div class="card-muted">${escapeHtml(profile ? profile.name : '')} › ${escapeHtml(category ? category.name : '')}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+/* ---------- render: viajes ---------- */
+async function renderTrips(){
+  await ensureRestaurantesTrip();
+  const trips = await dbGetAll('trips');
+  const expenses = await dbGetAll('tripExpenses');
+  const totals = {};
+  expenses.forEach(e => totals[e.tripId] = (totals[e.tripId] || 0) + (Number(e.coste) || 0));
+  trips.sort((a,b) => (b.isDefault ? 1 : 0) - (a.isDefault ? 1 : 0) || b.createdAt - a.createdAt);
+  document.getElementById('tripsList').innerHTML = trips.map(t => `
+    <div class="card trip-card" data-id="${t.id}">
+      ${t.isDefault ? '' : `<button class="icon-btn danger" data-action="delete-trip" data-id="${t.id}">✕</button>`}
+      <div class="card-title">${t.isDefault ? '🍽 ' : '✈️ '}${escapeHtml(t.name)}</div>
+      ${!t.isDefault ? `<div class="card-muted">Total: ${(totals[t.id] || 0).toFixed(2)} €</div>` : ''}
+    </div>
+  `).join('');
+}
+
+function resetTripEditModes(){
+  expensesEditMode = false;
+  ticketsEditMode = false;
+  restaurantEditMode = false;
+  pendingRestPhoto = null;
+  document.getElementById('expensesView').style.display = 'block';
+  document.getElementById('expensesEdit').style.display = 'none';
+  document.getElementById('btnToggleExpensesEdit').textContent = '✏️ Modificar gastos';
+  document.getElementById('ticketsView').style.display = 'grid';
+  document.getElementById('ticketsEdit').style.display = 'none';
+  document.getElementById('btnToggleTicketsEdit').textContent = '✏️ Modificar tickets';
+  document.getElementById('restaurantView').style.display = 'block';
+  document.getElementById('restaurantEdit').style.display = 'none';
+  document.getElementById('btnToggleRestaurantEdit').textContent = '✏️ Modificar restaurantes';
+}
+
+async function renderTripDetail(tripId){
+  objectUrlsToRevoke.forEach(u => URL.revokeObjectURL(u));
+  objectUrlsToRevoke = [];
+  const trip = await dbGet('trips', tripId);
+  if (!trip) return;
+  document.getElementById('tripDetailTitle').textContent = trip.name;
+  resetTripEditModes();
+  if (trip.isDefault) {
+    document.getElementById('tripRegularSection').style.display = 'none';
+    document.getElementById('restaurantesSection').style.display = 'block';
+    await renderRestaurantView(tripId);
+    await renderRestaurantEditList(tripId);
+  } else {
+    document.getElementById('tripRegularSection').style.display = 'block';
+    document.getElementById('restaurantesSection').style.display = 'none';
+    await renderExpensesTotal(tripId);
+    await renderExpensesView(tripId);
+    await renderExpensesEditList(tripId);
+    await renderTicketsView(tripId);
+    await renderTicketsEditList(tripId);
+  }
+}
+
+/* ---------- render: gastos del viaje ---------- */
+async function renderExpensesTotal(tripId){
+  const expenses = await dbGetAll('tripExpenses', 'tripId', tripId);
+  const total = expenses.reduce((sum, e) => sum + (Number(e.coste) || 0), 0);
+  document.getElementById('expensesTotal').innerHTML = `
+    <div class="field-row-view" style="border-bottom:none;">
+      <span class="field-row-label">Total gastado</span>
+      <span class="field-row-value" style="color:var(--accent-ember); font-size:18px; font-weight:700;">${total.toFixed(2)} €</span>
+    </div>
+  `;
+}
+async function renderExpensesView(tripId){
+  const expenses = await dbGetAll('tripExpenses', 'tripId', tripId);
+  expenses.sort((a,b) => b.createdAt - a.createdAt);
+  const container = document.getElementById('expensesView');
+  if (expenses.length === 0) { container.innerHTML = '<p class="help-text">Sin gastos añadidos todavía.</p>'; return; }
+  container.innerHTML = expenses.map(e => `
+    <div class="card" style="cursor:default;">
+      <div style="display:flex; justify-content:space-between; gap:8px;">
+        <span class="card-title">${escapeHtml(e.concepto)}</span>
+        <span class="card-title" style="color:var(--accent-ember);">${Number(e.coste).toFixed(2)} €</span>
+      </div>
+      <div class="card-muted">${escapeHtml(e.ubicacion || '—')} · ${escapeHtml(e.tipo)}</div>
+      ${e.observaciones ? `<div class="card-muted">${escapeHtml(e.observaciones)}</div>` : ''}
+    </div>
+  `).join('');
+}
+async function renderExpensesEditList(tripId){
+  const expenses = await dbGetAll('tripExpenses', 'tripId', tripId);
+  expenses.sort((a,b) => b.createdAt - a.createdAt);
+  const locations = [...new Set(expenses.map(e => e.ubicacion).filter(Boolean))];
+  document.getElementById('ubicacionesDatalist').innerHTML = locations.map(l => `<option value="${escapeHtml(l)}">`).join('');
+  document.getElementById('expensesEditList').innerHTML = expenses.map(e => `
+    <div class="card" data-id="${e.id}" style="cursor:default;">
+      <button class="icon-btn danger" data-action="delete-expense" data-id="${e.id}">✕</button>
+      <label class="field-label">Concepto</label>
+      <input type="text" class="exp-input" data-field="concepto" data-id="${e.id}" value="${escapeHtml(e.concepto)}">
+      <label class="field-label">Ubicación</label>
+      <input type="text" class="exp-input" data-field="ubicacion" data-id="${e.id}" list="ubicacionesDatalist" value="${escapeHtml(e.ubicacion || '')}">
+      <label class="field-label">Tipo</label>
+      <select class="exp-input" data-field="tipo" data-id="${e.id}">
+        ${TRIP_EXPENSE_TYPES.map(t => `<option value="${t}" ${t === e.tipo ? 'selected' : ''}>${t}</option>`).join('')}
+      </select>
+      <label class="field-label">Coste (€)</label>
+      <input type="number" step="0.01" min="0" class="exp-input" data-field="coste" data-id="${e.id}" value="${e.coste}">
+      <label class="field-label">Observaciones</label>
+      <input type="text" class="exp-input" data-field="observaciones" data-id="${e.id}" value="${escapeHtml(e.observaciones || '')}">
+    </div>
+  `).join('');
+}
+
+/* ---------- render: tickets del viaje ---------- */
+async function renderTicketsView(tripId){
+  const tickets = await dbGetAll('tripTickets', 'tripId', tripId);
+  tickets.sort((a,b) => b.createdAt - a.createdAt);
+  const container = document.getElementById('ticketsView');
+  if (tickets.length === 0) { container.innerHTML = '<p class="help-text">Sin tickets todavía.</p>'; return; }
+  container.innerHTML = tickets.map(t => {
+    const url = URL.createObjectURL(t.photoBlob);
+    objectUrlsToRevoke.push(url);
+    return `
+      <div class="card document-card" data-id="${t.id}">
+        <img src="${url}" class="doc-thumb">
+        <div class="doc-label">${escapeHtml(t.concepto || '')}</div>
+      </div>
+    `;
+  }).join('');
+}
+async function renderTicketsEditList(tripId){
+  const tickets = await dbGetAll('tripTickets', 'tripId', tripId);
+  tickets.sort((a,b) => b.createdAt - a.createdAt);
+  document.getElementById('ticketsEditList').innerHTML = tickets.map(t => {
+    const url = URL.createObjectURL(t.photoBlob);
+    objectUrlsToRevoke.push(url);
+    return `
+      <div class="card document-card" data-id="${t.id}">
+        <button class="icon-btn danger" data-action="delete-ticket" data-id="${t.id}">✕</button>
+        <img src="${url}" class="doc-thumb">
+        <div class="doc-label">${escapeHtml(t.concepto || '')}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+/* ---------- render: fichas de Restaurantes ---------- */
+async function renderRestaurantView(tripId){
+  const entries = await dbGetAll('restaurantEntries', 'tripId', tripId);
+  entries.sort((a,b) => b.createdAt - a.createdAt);
+  const container = document.getElementById('restaurantView');
+  if (entries.length === 0) { container.innerHTML = '<p class="help-text">Sin restaurantes añadidos todavía.</p>'; return; }
+  container.innerHTML = entries.map(r => {
+    let thumb = '';
+    if (r.photoBlob) {
+      const url = URL.createObjectURL(r.photoBlob);
+      objectUrlsToRevoke.push(url);
+      thumb = `<img src="${url}" style="width:100%; border-radius:6px; margin-top:8px;">`;
+    }
+    return `
+      <div class="card" style="cursor:default;">
+        <div style="display:flex; justify-content:space-between; gap:8px;">
+          <span class="card-title">${escapeHtml(r.concepto)}</span>
+          <span class="card-title" style="color:var(--accent-ember);">${Number(r.precio).toFixed(2)} €</span>
+        </div>
+        <div class="card-muted">Nº personas: ${r.numPersonas || '—'}</div>
+        ${r.observaciones ? `<div class="card-muted">${escapeHtml(r.observaciones)}</div>` : ''}
+        ${thumb}
+      </div>
+    `;
+  }).join('');
+}
+async function renderRestaurantEditList(tripId){
+  const entries = await dbGetAll('restaurantEntries', 'tripId', tripId);
+  entries.sort((a,b) => b.createdAt - a.createdAt);
+  document.getElementById('restaurantEditList').innerHTML = entries.map(r => {
+    let thumb = '';
+    if (r.photoBlob) {
+      const url = URL.createObjectURL(r.photoBlob);
+      objectUrlsToRevoke.push(url);
+      thumb = `<img src="${url}" style="width:100%; border-radius:6px; margin:8px 0;">`;
+    }
+    return `
+      <div class="card" data-id="${r.id}" style="cursor:default;">
+        <button class="icon-btn danger" data-action="delete-restaurant" data-id="${r.id}">✕</button>
+        <label class="field-label">Concepto</label>
+        <input type="text" class="rest-input" data-field="concepto" data-id="${r.id}" value="${escapeHtml(r.concepto)}">
+        <label class="field-label">Precio (€)</label>
+        <input type="number" step="0.01" min="0" class="rest-input" data-field="precio" data-id="${r.id}" value="${r.precio}">
+        <label class="field-label">Nº personas</label>
+        <input type="number" min="1" class="rest-input" data-field="numPersonas" data-id="${r.id}" value="${r.numPersonas || ''}">
+        <label class="field-label">Observaciones</label>
+        <input type="text" class="rest-input" data-field="observaciones" data-id="${r.id}" value="${escapeHtml(r.observaciones || '')}">
+        ${thumb}
+      </div>
+    `;
+  }).join('');
+}
+
+/* ---------- render: Vacaciones ---------- */
+function renderMonthGrid(year, month, sets, editMode){
+  const totalDays = daysInMonth(year, month);
+  const offset = firstWeekdayMondayIndex(year, month);
+  let cells = '';
+  for (let i = 0; i < offset; i++) cells += `<div class="cal-cell cal-empty"></div>`;
+  for (let day = 1; day <= totalDays; day++) {
+    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const isVacation = sets.vacation.has(dateStr);
+    const isLactancia = !isVacation && sets.lactancia.has(dateStr);
+    const isPermiso = !isVacation && !isLactancia && sets.permiso.has(dateStr);
+    const isFestivo = !isVacation && !isLactancia && !isPermiso && (sets.holiday.has(dateStr) || isWeekendDate(dateStr));
+    let cls = 'cal-cell';
+    if (isVacation) cls += ' cal-vacation';
+    else if (isLactancia) cls += ' cal-lactancia';
+    else if (isPermiso) cls += ' cal-permiso';
+    else if (isFestivo) cls += ' cal-festivo';
+    if (editMode) cls += ' cal-editable';
+    cells += `<div class="${cls}" data-date="${dateStr}">${day}</div>`;
+  }
+  return `
+    <div class="cal-month">
+      <div class="cal-month-title">${MONTH_NAMES[month]}</div>
+      <div class="cal-weekdays">${WEEKDAY_LETTERS.map(w => `<span>${w}</span>`).join('')}</div>
+      <div class="cal-grid">${cells}</div>
+    </div>
+  `;
+}
+async function renderVacationYearSummary(year){
+  const yearRecord = await getVacationYearRecord(year);
+  const assigned = yearRecord ? yearRecord.assignedDays : 0;
+  const allDays = await dbGetAll('vacationDays');
+  const taken = allDays.filter(d => d.dateStr.startsWith(String(year))).length;
+  document.getElementById('vacationYearSummary').innerHTML = `
+    <div class="field-row-view">
+      <span class="field-row-label">Días al inicio del año ${year}</span>
+      <span class="field-row-value">${assigned}</span>
+    </div>
+    <div class="field-row-view">
+      <span class="field-row-label">Disfrutados</span>
+      <span class="field-row-value">${taken}</span>
+    </div>
+    <div class="field-row-view" style="border-bottom:none;">
+      <span class="field-row-label">Restantes</span>
+      <span class="field-row-value" style="color:var(--accent-ember); font-weight:700;">${assigned - taken}</span>
+    </div>
+  `;
+  document.getElementById('inputVacationAssigned').value = assigned || '';
+}
+async function renderVacationCalendar(year){
+  const [allVacation, allHolidays, allPermiso, allLactancia] = await Promise.all([
+    dbGetAll('vacationDays'), dbGetAll('holidayDays'), dbGetAll('permisoDays'), dbGetAll('lactanciaDays')
+  ]);
+  const toSet = (arr) => new Set(arr.filter(d => d.dateStr.startsWith(String(year))).map(d => d.dateStr));
+  const sets = {
+    vacation: toSet(allVacation),
+    holiday: toSet(allHolidays),
+    permiso: toSet(allPermiso),
+    lactancia: toSet(allLactancia)
+  };
+  const editMode = vacationEditMode || festivoEditMode || permisoEditMode || lactanciaEditMode;
+  let html = '';
+  for (let m = 0; m < 12; m++) html += renderMonthGrid(year, m, sets, editMode);
+  document.getElementById('vacationCalendar').innerHTML = html;
+}
+async function renderVacationYearsTable(){
+  const yearRecords = await dbGetAll('vacationYears');
+  const allDays = await dbGetAll('vacationDays');
+  const yearsSet = new Set(yearRecords.map(y => y.year));
+  allDays.forEach(d => yearsSet.add(parseInt(d.dateStr.slice(0, 4))));
+  const years = [...yearsSet].sort((a, b) => a - b);
+  const recordMap = Object.fromEntries(yearRecords.map(y => [y.year, y]));
+  document.getElementById('vacationYearsTable').innerHTML = years.map(y => {
+    const assigned = recordMap[y] ? recordMap[y].assignedDays : 0;
+    const taken = allDays.filter(d => d.dateStr.startsWith(String(y))).length;
+    return `
+      <div class="field-row-view" data-year="${y}" style="cursor:pointer;">
+        <span class="field-row-label">${y}</span>
+        <span class="field-row-value">Asig. ${assigned} · Disf. ${taken} · Rest. ${assigned - taken}</span>
+      </div>
+    `;
+  }).join('') || '<p class="help-text" style="padding:10px 0;">Sin años registrados todavía.</p>';
+}
+async function renderAnnotationsView(){
+  const items = await dbGetAll('annotations');
+  items.sort((a, b) => (b.startDate || '').localeCompare(a.startDate || ''));
+  const container = document.getElementById('annotationsView');
+  if (items.length === 0) { container.innerHTML = '<p class="help-text">Sin anotaciones todavía.</p>'; return; }
+  container.innerHTML = items.map(a => `
+    <div class="field-row-view">
+      <span class="field-row-label">${formatDateRange(a.startDate, a.endDate)}</span>
+      <span class="field-row-value">${escapeHtml(a.concepto)}</span>
+    </div>
+  `).join('');
+}
+async function renderAnnotationsEditList(){
+  const items = await dbGetAll('annotations');
+  items.sort((a, b) => (b.startDate || '').localeCompare(a.startDate || ''));
+  document.getElementById('annotationsEditList').innerHTML = items.map(a => `
+    <div class="card" style="cursor:default;">
+      <button class="icon-btn danger" data-action="delete-annotation" data-id="${a.id}">✕</button>
+      <div class="card-title">${formatDateRange(a.startDate, a.endDate)}</div>
+      <div class="card-muted">${escapeHtml(a.concepto)}</div>
+    </div>
+  `).join('');
+}
+async function renderAnnotations(){
+  await renderAnnotationsView();
+  await renderAnnotationsEditList();
+}
+
+async function renderVacationScreen(year){
+  currentVacationYear = year;
+  await ensureVacationYearRecord(year);
+  document.getElementById('vacationYearLabel').textContent = String(year);
+  await renderVacationYearSummary(year);
+  await renderVacationCalendar(year);
+  await renderAnnotations();
+  await renderVacationYearsTable();
+  document.getElementById('btnToggleVacationEdit').textContent = vacationEditMode ? '✅ Cerrar edición' : '✏️ Modificar vacaciones';
+  document.getElementById('btnToggleFestivoEdit').textContent = festivoEditMode ? '✅ Cerrar edición' : '✏️ Modificar festivos';
+  document.getElementById('btnTogglePermisoEdit').textContent = permisoEditMode ? '✅ Cerrar edición' : '✏️ Modificar permiso';
+  document.getElementById('btnToggleLactanciaEdit').textContent = lactanciaEditMode ? '✅ Cerrar edición' : '✏️ Modificar lactancia';
+  document.getElementById('vacationAssignedEditRow').style.display = vacationEditMode ? 'flex' : 'none';
+  document.getElementById('annotationsView').style.display = annotationsEditMode ? 'none' : 'block';
+  document.getElementById('annotationsEdit').style.display = annotationsEditMode ? 'block' : 'none';
+  document.getElementById('btnToggleAnnotationsEdit').textContent = annotationsEditMode ? '✅ Cerrar edición' : '✏️ Modificar anotaciones';
+}
+
+/* ---------- render: Lecturas ---------- */
+async function renderReadingYears(){
+  const buckets = await dbGetAll('readingYears');
+  const readings = await dbGetAll('readings');
+  const counts = {};
+  readings.forEach(r => counts[r.yearKey] = (counts[r.yearKey] || 0) + 1);
+  const keys = sortReadingYearKeys(buckets.map(b => b.yearKey));
+  document.getElementById('readingYearsList').innerHTML = keys.map(k => `
+    <div class="card trip-card" data-year-key="${k}">
+      <button class="icon-btn danger" data-action="delete-reading-year" data-year-key="${k}">✕</button>
+      <div class="card-title">📚 ${readingYearLabel(k)}</div>
+      <div class="card-muted">${counts[k] || 0} libro(s)</div>
+    </div>
+  `).join('');
+}
+async function renderReadingsTableView(yearKey){
+  const all = await dbGetAll('readings');
+  const items = all.filter(r => r.yearKey === yearKey).sort((a, b) => a.displayId - b.displayId);
+  const container = document.getElementById('readingsTableView');
+  if (items.length === 0) { container.innerHTML = '<p class="help-text">Sin libros añadidos todavía.</p>'; return; }
+  container.innerHTML = items.map(r => `
+    <div class="card" style="cursor:default;">
+      <span class="card-title">#${r.displayId} ${escapeHtml(r.titulo)}</span>
+      <div class="card-muted">${escapeHtml(r.autor || '—')}</div>
+      <div class="card-muted">Año escrito: ${escapeHtml(r.anoEscrito || '—')}${r.premios ? ' · ' + escapeHtml(r.premios) : ''}</div>
+    </div>
+  `).join('');
+}
+async function renderReadingsEditList(yearKey){
+  const all = await dbGetAll('readings');
+  const items = all.filter(r => r.yearKey === yearKey).sort((a, b) => a.displayId - b.displayId);
+  const buckets = await dbGetAll('readingYears');
+  const yearKeys = sortReadingYearKeys(buckets.map(b => b.yearKey));
+  const yearOptionsFor = (current) => yearKeys.map(k =>
+    `<option value="${k}" ${k === current ? 'selected' : ''}>${readingYearLabel(k)}</option>`
+  ).join('');
+  document.getElementById('readingsEditList').innerHTML = items.map(r => `
+    <div class="card" data-id="${r.id}" style="cursor:default;">
+      <button class="icon-btn danger" data-action="delete-reading" data-id="${r.id}">✕</button>
+      <div class="card-muted" style="margin-bottom:6px;">ID ${r.displayId}</div>
+      <label class="field-label">Título</label>
+      <input type="text" class="reading-input" data-field="titulo" data-id="${r.id}" value="${escapeHtml(r.titulo)}">
+      <label class="field-label">Autor</label>
+      <input type="text" class="reading-input" data-field="autor" data-id="${r.id}" value="${escapeHtml(r.autor || '')}">
+      <label class="field-label">Año escrito</label>
+      <input type="text" class="reading-input" data-field="anoEscrito" data-id="${r.id}" value="${escapeHtml(r.anoEscrito || '')}">
+      <label class="field-label">Premios / Reconocimientos</label>
+      <input type="text" class="reading-input" data-field="premios" data-id="${r.id}" value="${escapeHtml(r.premios || '')}">
+      <label class="field-label">Año de lectura (carpeta)</label>
+      <select class="reading-year-select" data-id="${r.id}">${yearOptionsFor(r.yearKey)}</select>
+    </div>
+  `).join('');
+}
+async function renderReadingsDetail(yearKey){
+  currentReadingYearKey = yearKey;
+  document.getElementById('readingsDetailTitle').textContent = '📚 ' + readingYearLabel(yearKey);
+  readingsEditMode = false;
+  document.getElementById('readingsTableView').style.display = 'block';
+  document.getElementById('readingsTableEdit').style.display = 'none';
+  document.getElementById('btnToggleReadingsEdit').textContent = '✏️ Modificar';
+  await renderReadingsTableView(yearKey);
+  await renderReadingsEditList(yearKey);
+}
+async function renderReadingsStats(){
+  const all = await dbGetAll('readings');
+  const container = document.getElementById('readingsStatsBody');
+  if (all.length === 0) { container.innerHTML = '<p class="help-text">Todavía no hay lecturas registradas.</p>'; return; }
+
+  const total = all.length;
+
+  const byYear = {};
+  all.forEach(r => { byYear[r.yearKey] = (byYear[r.yearKey] || 0) + 1; });
+  const yearKeysSorted = sortReadingYearKeys(Object.keys(byYear));
+  const realYearEntries = Object.entries(byYear).filter(([k]) => k !== 'PRE2022');
+  const bestYear = [...realYearEntries].sort((a, b) => b[1] - a[1])[0];
+  const totalRealYearBooks = realYearEntries.reduce((s, [, c]) => s + c, 0);
+  const avgPerYear = realYearEntries.length > 0 ? (totalRealYearBooks / realYearEntries.length) : 0;
+
+  const byAuthor = {};
+  all.forEach(r => { const a = (r.autor || '').trim(); if (a) byAuthor[a] = (byAuthor[a] || 0) + 1; });
+  const topAuthors = Object.entries(byAuthor).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  const distinctAuthors = Object.keys(byAuthor).length;
+
+  const withPremios = all.filter(r => (r.premios || '').trim()).length;
+
+  const anosEscritos = all.map(r => parseInt(r.anoEscrito)).filter(n => !isNaN(n));
+  const oldestWritten = anosEscritos.length ? Math.min(...anosEscritos) : null;
+  const newestWritten = anosEscritos.length ? Math.max(...anosEscritos) : null;
+  const oldestBooks = oldestWritten !== null ? all.filter(r => parseInt(r.anoEscrito) === oldestWritten) : [];
+  const newestBooks = newestWritten !== null ? all.filter(r => parseInt(r.anoEscrito) === newestWritten) : [];
+
+  const byDecade = {};
+  anosEscritos.forEach(y => { const d = Math.floor(y / 10) * 10; byDecade[d] = (byDecade[d] || 0) + 1; });
+  const decadeEntries = Object.entries(byDecade).sort((a, b) => a[0] - b[0]);
+
+  container.innerHTML = `
+    <div class="tile" style="padding:14px; margin-bottom:12px;">
+      <div class="card-title">📖 Total de lecturas</div>
+      <div class="card-muted" style="font-size:22px; color:var(--accent-ember);">${total} libro(s)</div>
+      <div class="card-muted">Autores distintos: ${distinctAuthors}</div>
+    </div>
+    <div class="tile" style="padding:14px; margin-bottom:12px;">
+      <div class="card-title">📅 Libros por año de lectura</div>
+      ${yearKeysSorted.map(k => `<div class="card-muted">${readingYearLabel(k)}: ${byYear[k]} libro(s)</div>`).join('')}
+      ${bestYear ? `<div class="card-muted" style="margin-top:6px;">Año con más lecturas: <strong>${readingYearLabel(bestYear[0])}</strong> (${bestYear[1]})</div>` : ''}
+      ${realYearEntries.length > 0 ? `<div class="card-muted">Promedio por año (2022 en adelante): ${avgPerYear.toFixed(1)}</div>` : ''}
+    </div>
+    <div class="tile" style="padding:14px; margin-bottom:12px;">
+      <div class="card-title">✍️ Autores más leídos</div>
+      ${topAuthors.length ? topAuthors.map(([a, c]) => `<div class="card-muted">${escapeHtml(a)}: ${c} libro(s)</div>`).join('') : '<div class="card-muted">Sin datos de autor.</div>'}
+    </div>
+    <div class="tile" style="padding:14px; margin-bottom:12px;">
+      <div class="card-title">🏆 Premios / Reconocimientos</div>
+      <div class="card-muted">${withPremios} de ${total} libro(s) con premio o reconocimiento registrado</div>
+    </div>
+    <div class="tile" style="padding:14px; margin-bottom:12px;">
+      <div class="card-title">🕰️ Año de escritura</div>
+      ${oldestWritten !== null ? `<div class="card-muted">Más antiguo: ${oldestWritten} — ${oldestBooks.map(b => escapeHtml(b.titulo)).join(', ')}</div>` : '<div class="card-muted">Sin datos de año escrito.</div>'}
+      ${newestWritten !== null ? `<div class="card-muted">Más reciente: ${newestWritten} — ${newestBooks.map(b => escapeHtml(b.titulo)).join(', ')}</div>` : ''}
+      ${decadeEntries.length ? `<div class="card-muted" style="margin-top:6px;">Por década: ${decadeEntries.map(([d, c]) => `${d}s: ${c}`).join(' · ')}</div>` : ''}
+    </div>
+  `;
+}
+
+/* ---------- Coche: Vehículos ---------- */
+/* Logos de marca por imagen: coloca el archivo de cada marca en la carpeta
+   "Logos" junto a DocuFest.html (ej. Logos/Ford.svg) y añade su entrada aquí.
+   Si el archivo no existe, se usa el icono genérico 🏁 como alternativa. */
+const BRAND_LOGO_FILES = {
+  'ford': 'Logos/Ford.svg'
+};
+function brandLogoFile(marca){
+  const key = (marca || '').trim().toLowerCase();
+  return BRAND_LOGO_FILES[key] || null;
+}
+async function addVehicle(data){
+  const vehicle = { id: uuid(), ...data, createdAt: Date.now() };
+  await dbPut('vehicles', vehicle);
+  return vehicle;
+}
+async function updateVehicle(vehicle){ await dbPut('vehicles', vehicle); }
+async function deleteVehicle(id){ await dbDelete('vehicles', id); }
+async function getVehiclesSorted(){
+  const vehicles = await dbGetAll('vehicles');
+  vehicles.sort((a, b) => (a.matricula || '').localeCompare(b.matricula || ''));
+  return vehicles;
+}
+function vehicleOptionsHtml(vehicles, selectedValue, includeAllOption){
+  const opts = vehicles.map(v => `<option value="${v.id}" ${v.id === selectedValue ? 'selected' : ''}>${escapeHtml(v.matricula || '')}${v.marca ? ' · ' + escapeHtml(v.marca) : ''}${v.modelo ? ' ' + escapeHtml(v.modelo) : ''}</option>`).join('');
+  const leading = includeAllOption
+    ? `<option value="all" ${selectedValue === 'all' ? 'selected' : ''}>Todos los vehículos</option>`
+    : `<option value="" ${!selectedValue ? 'selected' : ''}>Sin vehículo</option>`;
+  return leading + opts;
+}
+async function getVehicleLabelMap(){
+  const vehicles = await getVehiclesSorted();
+  const map = {};
+  vehicles.forEach(v => { map[v.id] = v.matricula || [v.marca, v.modelo].filter(Boolean).join(' ') || 'Vehículo'; });
+  return map;
+}
+async function renderVehiclesView(){
+  const vehicles = await getVehiclesSorted();
+  const container = document.getElementById('vehiclesView');
+  if (vehicles.length === 0) { container.innerHTML = '<p class="help-text">Sin vehículos añadidos todavía.</p>'; return; }
+  container.innerHTML = vehicles.map(v => {
+    const logoFile = brandLogoFile(v.marca);
+    const brandModelText = [escapeHtml(v.marca || ''), escapeHtml(v.modelo || '')].filter(Boolean).join(' ');
+    const brandIcon = logoFile
+      ? `<img src="${logoFile}" alt="${escapeHtml(v.marca || '')}" style="height:18px; vertical-align:middle; margin-right:6px;" onerror="this.replaceWith(document.createTextNode('🏁 '));">`
+      : '🏁 ';
+    return `
+    <div class="card" style="cursor:default;">
+      <div class="card-title">🚘 ${escapeHtml(v.matricula || '—')}</div>
+      <div class="card-muted">${brandModelText ? brandIcon + brandModelText : '—'}</div>
+    </div>
+  `;
+  }).join('');
+}
+async function renderVehiclesEditList(){
+  const vehicles = await getVehiclesSorted();
+  document.getElementById('vehiclesEditList').innerHTML = vehicles.map(v => `
+    <div class="card" data-id="${v.id}" style="cursor:default;">
+      <button class="icon-btn danger" data-action="delete-vehicle" data-id="${v.id}">✕</button>
+      <label class="field-label">Matrícula</label>
+      <input type="text" class="vehicle-input" data-field="matricula" data-id="${v.id}" value="${escapeHtml(v.matricula || '')}">
+      <label class="field-label">Marca</label>
+      <input type="text" class="vehicle-input" data-field="marca" data-id="${v.id}" value="${escapeHtml(v.marca || '')}">
+      <label class="field-label">Modelo</label>
+      <input type="text" class="vehicle-input" data-field="modelo" data-id="${v.id}" value="${escapeHtml(v.modelo || '')}">
+    </div>
+  `).join('');
+}
+async function renderVehiclesScreen(){
+  vehiclesEditMode = false;
+  document.getElementById('vehiclesView').style.display = 'block';
+  document.getElementById('vehiclesEdit').style.display = 'none';
+  document.getElementById('btnToggleVehiclesEdit').textContent = '✏️ Modificar';
+  await renderVehiclesView();
+  await renderVehiclesEditList();
+}
+
+/* ---------- Coche: Gasoil (por año) ---------- */
+function sortCarFuelYearKeys(keys){ return keys.sort((a, b) => parseInt(b) - parseInt(a)); }
+async function ensureCarFuelYearBucket(yearKey){
+  const buckets = await dbGetAll('carFuelYears');
+  let bucket = buckets.find(b => b.yearKey === yearKey);
+  if (!bucket) {
+    bucket = { id: uuid(), yearKey, createdAt: Date.now() };
+    await dbPut('carFuelYears', bucket);
+  }
+  return bucket;
+}
+async function deleteCarFuelYearCascade(yearKey){
+  const all = await dbGetAll('carFuelEntries');
+  for (const r of all.filter(r => r.yearKey === yearKey)) await dbDelete('carFuelEntries', r.id);
+  const buckets = await dbGetAll('carFuelYears');
+  const bucket = buckets.find(b => b.yearKey === yearKey);
+  if (bucket) await dbDelete('carFuelYears', bucket.id);
+}
+async function getNextCarFuelDisplayId(){
+  const all = await dbGetAll('carFuelEntries');
+  return all.reduce((max, r) => Math.max(max, r.displayId || 0), 0) + 1;
+}
+async function addCarFuelEntry(yearKey, data){
+  const displayId = await getNextCarFuelDisplayId();
+  const entry = { id: uuid(), displayId, yearKey, ...data, createdAt: Date.now() };
+  await dbPut('carFuelEntries', entry);
+  return entry;
+}
+async function updateCarFuelEntry(entry){ await dbPut('carFuelEntries', entry); }
+async function deleteCarFuelEntry(id){ await dbDelete('carFuelEntries', id); }
+
+async function renderCarFuelYears(){
+  const currentYear = new Date().getFullYear();
+  await ensureCarFuelYearBucket(String(currentYear));
+  const buckets = await dbGetAll('carFuelYears');
+  const entries = await dbGetAll('carFuelEntries');
+  const counts = {}, totals = {};
+  entries.forEach(e => {
+    counts[e.yearKey] = (counts[e.yearKey] || 0) + 1;
+    totals[e.yearKey] = (totals[e.yearKey] || 0) + (Number(e.precio) || 0);
+  });
+  const keys = sortCarFuelYearKeys(buckets.map(b => b.yearKey));
+  document.getElementById('carFuelYearsList').innerHTML = keys.map(k => `
+    <div class="card" data-year-key="${k}" style="cursor:pointer;">
+      <button class="icon-btn danger" data-action="delete-car-fuel-year" data-year-key="${k}">✕</button>
+      <div class="card-title">⛽ ${k}${k === String(currentYear) ? ' · Año actual' : ' · Archivado'}</div>
+      <div class="card-muted">${counts[k] || 0} repostaje(s) · ${(totals[k] || 0).toFixed(2)} €</div>
+    </div>
+  `).join('');
+}
+function filterByVehicle(items, filterValue){
+  if (filterValue === 'all') return items;
+  return items.filter(r => (r.vehicleId || '') === filterValue);
+}
+async function renderCarFuelTotal(yearKey){
+  const entries = await dbGetAll('carFuelEntries');
+  const items = filterByVehicle(entries.filter(e => e.yearKey === yearKey), carFuelVehicleFilter);
+  const total = items.reduce((sum, e) => sum + (Number(e.precio) || 0), 0);
+  document.getElementById('carFuelTotal').innerHTML = `
+    <div class="field-row-view" style="border-bottom:none;">
+      <span class="field-row-label">Total gastado</span>
+      <span class="field-row-value" style="color:var(--accent-ember); font-size:18px; font-weight:700;">${total.toFixed(2)} €</span>
+    </div>
+  `;
+}
+async function renderCarFuelView(yearKey){
+  const all = await dbGetAll('carFuelEntries');
+  const items = filterByVehicle(all.filter(r => r.yearKey === yearKey), carFuelVehicleFilter).sort((a, b) => a.displayId - b.displayId);
+  const vehicleMap = await getVehicleLabelMap();
+  const container = document.getElementById('carFuelView');
+  if (items.length === 0) { container.innerHTML = '<p class="help-text">Sin repostajes añadidos todavía.</p>'; return; }
+  container.innerHTML = items.map(r => `
+    <div class="card" style="cursor:default;">
+      <div style="display:flex; justify-content:space-between; gap:8px;">
+        <span class="card-title">#${r.displayId} ${r.fecha ? escapeHtml(formatDateRange(r.fecha, r.fecha)) : ''}</span>
+        <span class="card-title" style="color:var(--accent-ember);">${Number(r.precio || 0).toFixed(2)} €</span>
+      </div>
+      <div class="card-muted">${escapeHtml(r.gasolinera || '—')}${r.vehicleId && vehicleMap[r.vehicleId] ? ' · 🚘 ' + escapeHtml(vehicleMap[r.vehicleId]) : ''}</div>
+      ${r.anotaciones ? `<div class="card-muted">${escapeHtml(r.anotaciones)}</div>` : ''}
+    </div>
+  `).join('');
+}
+async function renderCarFuelEditList(yearKey){
+  const all = await dbGetAll('carFuelEntries');
+  const items = filterByVehicle(all.filter(r => r.yearKey === yearKey), carFuelVehicleFilter).sort((a, b) => a.displayId - b.displayId);
+  const stations = [...new Set(items.map(r => r.gasolinera).filter(Boolean))];
+  document.getElementById('carGasolinerasDatalist').innerHTML = stations.map(s => `<option value="${escapeHtml(s)}">`).join('');
+  const vehicles = await getVehiclesSorted();
+  document.getElementById('carFuelEditList').innerHTML = items.map(r => `
+    <div class="card" data-id="${r.id}" style="cursor:default;">
+      <button class="icon-btn danger" data-action="delete-car-fuel" data-id="${r.id}">✕</button>
+      <div class="card-muted" style="margin-bottom:6px;">ID ${r.displayId}</div>
+      <label class="field-label">Fecha</label>
+      <input type="date" class="car-fuel-input" data-field="fecha" data-id="${r.id}" value="${r.fecha || ''}">
+      <label class="field-label">Precio (€)</label>
+      <input type="number" step="0.01" min="0" class="car-fuel-input" data-field="precio" data-id="${r.id}" value="${r.precio || ''}">
+      <label class="field-label">Gasolinera</label>
+      <input type="text" class="car-fuel-input" data-field="gasolinera" data-id="${r.id}" list="carGasolinerasDatalist" value="${escapeHtml(r.gasolinera || '')}">
+      <label class="field-label">Anotaciones</label>
+      <input type="text" class="car-fuel-input" data-field="anotaciones" data-id="${r.id}" value="${escapeHtml(r.anotaciones || '')}">
+      <label class="field-label">Vehículo</label>
+      <select class="car-fuel-input" data-field="vehicleId" data-id="${r.id}">${vehicleOptionsHtml(vehicles, r.vehicleId || '', false)}</select>
+    </div>
+  `).join('');
+}
+async function renderCarFuelDetail(yearKey){
+  currentCarFuelYearKey = yearKey;
+  document.getElementById('carFuelDetailTitle').textContent = '⛽ ' + yearKey;
+  carFuelEditMode = false;
+  carFuelVehicleFilter = 'all';
+  document.getElementById('carFuelView').style.display = 'block';
+  document.getElementById('carFuelEdit').style.display = 'none';
+  document.getElementById('btnToggleCarFuelEdit').textContent = '✏️ Modificar';
+  const vehicles = await getVehiclesSorted();
+  document.getElementById('carFuelVehicleFilterSelect').innerHTML = vehicleOptionsHtml(vehicles, 'all', true);
+  document.getElementById('carFuelVehicle').innerHTML = vehicleOptionsHtml(vehicles, '', false);
+  await renderCarFuelTotal(yearKey);
+  await renderCarFuelView(yearKey);
+  await renderCarFuelEditList(yearKey);
+}
+
+/* ---------- Coche: Seguro ---------- */
+async function addCarInsurance(data){
+  const entry = { id: uuid(), ...data, createdAt: Date.now() };
+  await dbPut('carInsuranceEntries', entry);
+  return entry;
+}
+async function updateCarInsurance(entry){ await dbPut('carInsuranceEntries', entry); }
+async function deleteCarInsurance(id){ await dbDelete('carInsuranceEntries', id); }
+
+async function renderCarInsuranceTotal(){
+  const all = await dbGetAll('carInsuranceEntries');
+  const items = filterByVehicle(all, carInsuranceVehicleFilter);
+  const total = items.reduce((sum, e) => sum + (Number(e.coste) || 0), 0);
+  document.getElementById('carInsuranceTotal').innerHTML = `
+    <div class="field-row-view" style="border-bottom:none;">
+      <span class="field-row-label">Total pagado</span>
+      <span class="field-row-value" style="color:var(--accent-ember); font-size:18px; font-weight:700;">${total.toFixed(2)} €</span>
+    </div>
+  `;
+}
+async function renderCarInsuranceView(){
+  const all = await dbGetAll('carInsuranceEntries');
+  const items = filterByVehicle(all, carInsuranceVehicleFilter);
+  items.sort((a, b) => (b.anio || 0) - (a.anio || 0));
+  const vehicleMap = await getVehicleLabelMap();
+  const container = document.getElementById('carInsuranceView');
+  if (items.length === 0) { container.innerHTML = '<p class="help-text">Sin pólizas añadidas todavía.</p>'; return; }
+  container.innerHTML = items.map(r => `
+    <div class="card" style="cursor:default;">
+      <div style="display:flex; justify-content:space-between; gap:8px;">
+        <span class="card-title">${escapeHtml(String(r.anio || '—'))}</span>
+        <span class="card-title" style="color:var(--accent-ember);">${Number(r.coste || 0).toFixed(2)} €</span>
+      </div>
+      <div class="card-muted">${escapeHtml(r.compania || '—')}${r.vehicleId && vehicleMap[r.vehicleId] ? ' · 🚘 ' + escapeHtml(vehicleMap[r.vehicleId]) : ''}</div>
+    </div>
+  `).join('');
+}
+async function renderCarInsuranceEditList(){
+  const all = await dbGetAll('carInsuranceEntries');
+  const items = filterByVehicle(all, carInsuranceVehicleFilter);
+  items.sort((a, b) => (b.anio || 0) - (a.anio || 0));
+  const vehicles = await getVehiclesSorted();
+  document.getElementById('carInsuranceEditList').innerHTML = items.map(r => `
+    <div class="card" data-id="${r.id}" style="cursor:default;">
+      <button class="icon-btn danger" data-action="delete-car-insurance" data-id="${r.id}">✕</button>
+      <label class="field-label">Año</label>
+      <input type="number" class="car-insurance-input" data-field="anio" data-id="${r.id}" value="${r.anio || ''}">
+      <label class="field-label">Coste (€)</label>
+      <input type="number" step="0.01" min="0" class="car-insurance-input" data-field="coste" data-id="${r.id}" value="${r.coste || ''}">
+      <label class="field-label">Compañía</label>
+      <input type="text" class="car-insurance-input" data-field="compania" data-id="${r.id}" value="${escapeHtml(r.compania || '')}">
+      <label class="field-label">Vehículo</label>
+      <select class="car-insurance-input" data-field="vehicleId" data-id="${r.id}">${vehicleOptionsHtml(vehicles, r.vehicleId || '', false)}</select>
+    </div>
+  `).join('');
+}
+async function renderCarInsuranceScreen(){
+  carInsuranceEditMode = false;
+  carInsuranceVehicleFilter = 'all';
+  document.getElementById('carInsuranceView').style.display = 'block';
+  document.getElementById('carInsuranceEdit').style.display = 'none';
+  document.getElementById('btnToggleCarInsuranceEdit').textContent = '✏️ Modificar';
+  const vehicles = await getVehiclesSorted();
+  document.getElementById('carInsuranceVehicleFilterSelect').innerHTML = vehicleOptionsHtml(vehicles, 'all', true);
+  document.getElementById('carInsuranceVehicle').innerHTML = vehicleOptionsHtml(vehicles, '', false);
+  await renderCarInsuranceTotal();
+  await renderCarInsuranceView();
+  await renderCarInsuranceEditList();
+}
+
+/* ---------- Coche: Taller ---------- */
+async function getNextCarGarageDisplayId(){
+  const all = await dbGetAll('carGarageEntries');
+  return all.reduce((max, r) => Math.max(max, r.displayId || 0), 0) + 1;
+}
+async function addCarGarageEntry(data){
+  const displayId = await getNextCarGarageDisplayId();
+  const entry = { id: uuid(), displayId, ...data, createdAt: Date.now() };
+  await dbPut('carGarageEntries', entry);
+  return entry;
+}
+async function updateCarGarageEntry(entry){ await dbPut('carGarageEntries', entry); }
+async function deleteCarGarageEntry(id){ await dbDelete('carGarageEntries', id); }
+
+async function renderCarGarageView(){
+  const all = await dbGetAll('carGarageEntries');
+  const items = filterByVehicle(all, carGarageVehicleFilter);
+  items.sort((a, b) => a.displayId - b.displayId);
+  const vehicleMap = await getVehicleLabelMap();
+  const container = document.getElementById('carGarageView');
+  if (items.length === 0) { container.innerHTML = '<p class="help-text">Sin entradas de taller todavía.</p>'; return; }
+  container.innerHTML = items.map(r => `
+    <div class="card" style="cursor:default;">
+      <span class="card-title">#${r.displayId} ${escapeHtml(r.concepto || '')}</span>
+      <div class="card-muted">${r.fecha ? escapeHtml(formatDateRange(r.fecha, r.fecha)) : '—'}${r.vehicleId && vehicleMap[r.vehicleId] ? ' · 🚘 ' + escapeHtml(vehicleMap[r.vehicleId]) : ''}</div>
+      ${r.observaciones ? `<div class="card-muted">${escapeHtml(r.observaciones)}</div>` : ''}
+    </div>
+  `).join('');
+}
+async function renderCarGarageEditList(){
+  const all = await dbGetAll('carGarageEntries');
+  const items = filterByVehicle(all, carGarageVehicleFilter);
+  items.sort((a, b) => a.displayId - b.displayId);
+  const vehicles = await getVehiclesSorted();
+  document.getElementById('carGarageEditList').innerHTML = items.map(r => `
+    <div class="card" data-id="${r.id}" style="cursor:default;">
+      <button class="icon-btn danger" data-action="delete-car-garage" data-id="${r.id}">✕</button>
+      <div class="card-muted" style="margin-bottom:6px;">ID ${r.displayId}</div>
+      <label class="field-label">Fecha</label>
+      <input type="date" class="car-garage-input" data-field="fecha" data-id="${r.id}" value="${r.fecha || ''}">
+      <label class="field-label">Concepto</label>
+      <input type="text" class="car-garage-input" data-field="concepto" data-id="${r.id}" value="${escapeHtml(r.concepto || '')}">
+      <label class="field-label">Observaciones</label>
+      <input type="text" class="car-garage-input" data-field="observaciones" data-id="${r.id}" value="${escapeHtml(r.observaciones || '')}">
+      <label class="field-label">Vehículo</label>
+      <select class="car-garage-input" data-field="vehicleId" data-id="${r.id}">${vehicleOptionsHtml(vehicles, r.vehicleId || '', false)}</select>
+    </div>
+  `).join('');
+}
+async function renderCarGarageScreen(){
+  carGarageEditMode = false;
+  carGarageVehicleFilter = 'all';
+  document.getElementById('carGarageView').style.display = 'block';
+  document.getElementById('carGarageEdit').style.display = 'none';
+  document.getElementById('btnToggleCarGarageEdit').textContent = '✏️ Modificar';
+  const vehicles = await getVehiclesSorted();
+  document.getElementById('carGarageVehicleFilterSelect').innerHTML = vehicleOptionsHtml(vehicles, 'all', true);
+  document.getElementById('carGarageVehicle').innerHTML = vehicleOptionsHtml(vehicles, '', false);
+  await renderCarGarageView();
+  await renderCarGarageEditList();
+}
+
+/* ---------- Copia de seguridad completa (protegida con PIN) ----------
+   Exporta TODOS los almacenes de la app (perfiles, documentos, viajes,
+   vacaciones, lecturas, coche, etc.) en un único archivo cifrado, pensado
+   para restaurar la app entera tras formatear el móvil. Reutiliza el
+   escritor/lector ZIP ya existente (sin compresión) y cifra el resultado
+   con AES-GCM derivando la clave del PIN mediante PBKDF2 (Web Crypto,
+   nativo del navegador, sin librerías externas). */
+const FULL_BACKUP_MAGIC = 'DFBK1';
+const FULL_BACKUP_STORES = [
+  'profiles', 'categories', 'documents', 'fields',
+  'trips', 'tripExpenses', 'tripTickets', 'restaurantEntries',
+  'vacationYears', 'vacationDays', 'holidayDays', 'permisoDays', 'lactanciaDays', 'annotations',
+  'readings', 'readingYears',
+  'carFuelEntries', 'carFuelYears', 'carInsuranceEntries', 'carGarageEntries', 'vehicles'
+];
+const FULL_BACKUP_BLOB_FIELDS = {
+  documents: 'blob',
+  tripTickets: 'photoBlob',
+  restaurantEntries: 'photoBlob'
+};
+/* El cifrado (Web Crypto / crypto.subtle) solo está disponible en "contextos
+   seguros": una web servida por https, o localhost. Muchos navegadores
+   móviles (sobre todo Safari/iOS, y algunas versiones de Chrome/WebView en
+   Android) NO conceden ese estado al abrir el archivo directamente desde el
+   teléfono con file://, aunque en el ordenador sí lo permitan. Sin esto, ni
+   exportar ni importar la copia de seguridad puede funcionar en el móvil. */
+function assertCryptoAvailable(){
+  if (!window.isSecureContext || !window.crypto || !window.crypto.subtle) {
+    throw new Error(
+      'Este móvil/navegador no permite usar cifrado (Web Crypto) al abrir DocuFest ' +
+      'directamente desde un archivo. Es una restricción de seguridad del propio ' +
+      'navegador para file://, no un fallo del archivo ni del PIN. Para que ' +
+      '"Exportar/Importar todos los datos" funcione en el móvil, hay que servir ' +
+      'DocuFest.html desde una URL https (por ejemplo, alojándolo en GitHub Pages).'
+    );
+  }
+}
+async function deriveBackupKey(pin, salt, forEncrypt){
+  const enc = new TextEncoder().encode(pin);
+  const baseKey = await crypto.subtle.importKey('raw', enc, 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt, iterations: 150000, hash: 'SHA-256' },
+    baseKey,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    [forEncrypt ? 'encrypt' : 'decrypt']
+  );
+}
+async function readZipEntryBytes(fileBuffer, entries, path){
+  const entry = entries.find(e => e.name === path);
+  if (!entry) return null;
+  return await extractZipEntry(fileBuffer, entry);
+}
+async function buildFullBackupBlob(pin){
+  const dump = {};
+  const zipEntries = [];
+  for (const storeName of FULL_BACKUP_STORES) {
+    const records = await dbGetAll(storeName);
+    const blobField = FULL_BACKUP_BLOB_FIELDS[storeName];
+    if (blobField) {
+      const cleaned = [];
+      for (const r of records) {
+        const { [blobField]: blobValue, ...rest } = r;
+        if (blobValue) {
+          const bytes = new Uint8Array(await blobValue.arrayBuffer());
+          zipEntries.push({ name: `blobs/${storeName}/${r.id}`, data: bytes });
+        }
+        cleaned.push(rest);
+      }
+      dump[storeName] = cleaned;
+    } else {
+      dump[storeName] = records;
+    }
+  }
+  const jsonBytes = new TextEncoder().encode(JSON.stringify(dump));
+  zipEntries.unshift({ name: 'data.json', data: jsonBytes });
+  const zipBlob = await buildZip(zipEntries);
+  const zipBytes = new Uint8Array(await zipBlob.arrayBuffer());
+
+  const salt = randomBytes(16);
+  const iv = randomBytes(12);
+  const key = await deriveBackupKey(pin, salt, true);
+  const ciphertext = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, zipBytes));
+
+  const magicBytes = new TextEncoder().encode(FULL_BACKUP_MAGIC);
+  const finalBytes = new Uint8Array(magicBytes.length + salt.length + iv.length + ciphertext.length);
+  finalBytes.set(magicBytes, 0);
+  finalBytes.set(salt, magicBytes.length);
+  finalBytes.set(iv, magicBytes.length + salt.length);
+  finalBytes.set(ciphertext, magicBytes.length + salt.length + iv.length);
+  return new Blob([finalBytes], { type: 'application/octet-stream' });
+}
+async function restoreFullBackupFromFile(file, pin){
+  const buffer = await file.arrayBuffer();
+  const bytes = new Uint8Array(buffer);
+  const magicLen = FULL_BACKUP_MAGIC.length;
+  if (bytes.length < magicLen + 16 + 12) {
+    throw new Error(`El archivo es demasiado pequeño (${bytes.length} bytes) para ser una copia de seguridad válida. ¿Seguro que has seleccionado el archivo .dfbackup correcto y completo?`);
+  }
+  // Busca la cabecera en los primeros bytes en vez de exigirla en la posición 0:
+  // así toleramos un BOM u otros bytes sueltos que a veces añaden apps de
+  // mensajería o gestores de archivos al mover ficheros binarios.
+  const searchWindow = Math.min(bytes.length - magicLen, 16);
+  let magicOffset = -1;
+  for (let i = 0; i <= searchWindow; i++) {
+    if (new TextDecoder().decode(bytes.slice(i, i + magicLen)) === FULL_BACKUP_MAGIC) { magicOffset = i; break; }
+  }
+  if (magicOffset === -1) {
+    const headerHex = Array.from(bytes.slice(0, Math.min(bytes.length, 16))).map(b => b.toString(16).padStart(2, '0')).join(' ');
+    const headerText = new TextDecoder().decode(bytes.slice(0, magicLen));
+    throw new Error(`Este archivo no es una copia de seguridad válida de DocuFest (cabecera "${headerText}" / primeros bytes ${headerHex}, tamaño ${bytes.length} bytes). Comprueba que has elegido el archivo .dfbackup exacto y completo, sin haberlo abierto o reenviado por otra app.`);
+  }
+  const salt = bytes.slice(magicOffset + magicLen, magicOffset + magicLen + 16);
+  const iv = bytes.slice(magicOffset + magicLen + 16, magicOffset + magicLen + 28);
+  const ciphertext = bytes.slice(magicOffset + magicLen + 28);
+
+  const key = await deriveBackupKey(pin, salt, false);
+  let plainBuffer;
+  try {
+    plainBuffer = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ciphertext);
+  } catch (e) {
+    throw new Error('PIN incorrecto o archivo dañado.');
+  }
+
+  const entries = parseZipCentralDirectory(plainBuffer);
+  const jsonBytes = await readZipEntryBytes(plainBuffer, entries, 'data.json');
+  if (!jsonBytes) throw new Error('El archivo de copia de seguridad está incompleto.');
+  const dump = JSON.parse(new TextDecoder('utf-8').decode(jsonBytes));
+
+  for (const storeName of FULL_BACKUP_STORES) await dbClear(storeName);
+
+  for (const storeName of FULL_BACKUP_STORES) {
+    const records = dump[storeName] || [];
+    const blobField = FULL_BACKUP_BLOB_FIELDS[storeName];
+    for (const r of records) {
+      if (blobField) {
+        const blobBytes = await readZipEntryBytes(plainBuffer, entries, `blobs/${storeName}/${r.id}`);
+        const restored = { ...r };
+        restored[blobField] = blobBytes ? new Blob([blobBytes], { type: r.mimeType || 'application/octet-stream' }) : null;
+        await dbPut(storeName, restored);
+      } else {
+        await dbPut(storeName, r);
+      }
+    }
+  }
+}
+
+/* Modal de PIN oculto (input type=password) para exportar/importar la copia
+   de seguridad completa. Devuelve el PIN introducido, o null si se cancela.
+   Si se pasa requireConfirm, exige repetir el PIN y que coincidan. Si se
+   pasa un error inicial (ej. "PIN incorrecto"), lo muestra ya abierto. */
+function askBackupPin({ title, help, requireConfirm, initialError }){
+  return new Promise((resolve) => {
+    const modal = document.getElementById('modalBackupPin');
+    const input1 = document.getElementById('backupPinInput1');
+    const input2 = document.getElementById('backupPinInput2');
+    const errorEl = document.getElementById('backupPinModalError');
+    const acceptBtn = document.getElementById('backupPinModalAccept');
+    const closeBtn = document.getElementById('backupPinModalClose');
+
+    document.getElementById('backupPinModalTitle').textContent = title;
+    document.getElementById('backupPinModalHelp').textContent = help || '';
+    input1.value = '';
+    input2.value = '';
+    document.getElementById('backupPinConfirmRow').style.display = requireConfirm ? 'block' : 'none';
+    errorEl.textContent = initialError || '';
+    modal.classList.add('active');
+    setTimeout(() => input1.focus(), 50);
+
+    function cleanup(){
+      modal.classList.remove('active');
+      acceptBtn.removeEventListener('click', onAccept);
+      closeBtn.removeEventListener('click', onCancel);
+      input1.removeEventListener('keydown', onKeydown);
+    }
+    function onAccept(){
+      const pin1 = input1.value;
+      if (!pin1 || pin1.length < 4) {
+        errorEl.textContent = 'El PIN debe tener al menos 4 caracteres.';
+        return;
+      }
+      if (requireConfirm && pin1 !== input2.value) {
+        errorEl.textContent = 'Los dos PIN no coinciden.';
+        return;
+      }
+      cleanup();
+      resolve(pin1);
+    }
+    function onCancel(){
+      cleanup();
+      resolve(null);
+    }
+    function onKeydown(e){
+      if (e.key === 'Enter') onAccept();
+    }
+    acceptBtn.addEventListener('click', onAccept);
+    closeBtn.addEventListener('click', onCancel);
+    input1.addEventListener('keydown', onKeydown);
+  });
+}
+
+/* ---------- eventos ---------- */
+document.getElementById('btnOpenProfile').addEventListener('click', () => go('profiles'));
+document.getElementById('btnCreateProfile').addEventListener('click', () => go('create-profile'));
+document.getElementById('fabAddProfile').addEventListener('click', () => go('create-profile'));
+document.getElementById('btnSearchGlobal').addEventListener('click', () => go('search', {}));
+document.getElementById('btnExportAll').addEventListener('click', () => exportBackup(null));
+document.getElementById('toggleAutoArchive').addEventListener('change', (e) => setAutoArchiveEnabled(e.target.checked));
+
+document.getElementById('btnExportFullBackup').addEventListener('click', async () => {
+  try {
+    assertCryptoAvailable();
+  } catch (err) {
+    alert(err.message);
+    return;
+  }
+  const pin = await askBackupPin({
+    title: '💾 Crear copia de seguridad',
+    help: 'Elige un PIN para proteger este archivo (mínimo 4 caracteres). Lo necesitarás para restaurarlo.',
+    requireConfirm: true
+  });
+  if (!pin) return;
+  try {
+    const blob = await buildFullBackupBlob(pin);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `DocuFest_copia_completa_${new Date().toISOString().slice(0, 10)}.dfbackup`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+    alert('Copia de seguridad creada. Guarda bien el archivo y el PIN: los necesitarás juntos para restaurarla.');
+  } catch (err) {
+    console.error(err);
+    alert('No se pudo crear la copia de seguridad: ' + err.message);
+  }
+});
+document.getElementById('btnImportFullBackup').addEventListener('click', () => document.getElementById('fullBackupImportInput').click());
+document.getElementById('fullBackupImportInput').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  try {
+    assertCryptoAvailable();
+  } catch (err) {
+    alert(err.message);
+    return;
+  }
+  if (!confirm('Esto reemplazará TODOS los datos guardados ahora mismo en la app (perfiles, documentos, viajes, vacaciones, lecturas, coche...) por los del archivo importado. No se puede deshacer. ¿Continuar?')) return;
+
+  let modalError = '';
+  for (;;) {
+    const pin = await askBackupPin({
+      title: '📥 Restaurar copia de seguridad',
+      help: 'Introduce el PIN con el que protegiste este archivo.',
+      requireConfirm: false,
+      initialError: modalError
+    });
+    if (!pin) return;
+    try {
+      await restoreFullBackupFromFile(file, pin);
+      alert('Datos restaurados correctamente. La app se recargará ahora.');
+      location.reload();
+      return;
+    } catch (err) {
+      console.error(err);
+      if (err.message && err.message.startsWith('PIN incorrecto')) {
+        modalError = '❌ PIN incorrecto. Vuelve a intentarlo.';
+        continue;
+      }
+      alert('No se pudo importar la copia de seguridad: ' + err.message);
+      return;
+    }
+  }
+});
+document.getElementById('btnFormatAllData').addEventListener('click', async () => {
+  if (!confirm('Esto borrará TODOS los datos de la app (perfiles, documentos, viajes, vacaciones, lecturas, coche...). No se puede deshacer. ¿Seguro que quieres continuar?')) return;
+  if (!confirm('Última confirmación: se eliminará absolutamente todo lo guardado en DocuFest. Si quieres conservar una copia, cancela ahora y usa antes "Exportar todos los datos". ¿Formatear de todas formas?')) return;
+  try {
+    for (const storeName of FULL_BACKUP_STORES) await dbClear(storeName);
+    alert('Todos los datos han sido borrados. La app se recargará ahora.');
+    location.reload();
+  } catch (err) {
+    console.error(err);
+    alert('No se pudieron borrar los datos: ' + err.message);
+  }
+});
+
+document.getElementById('profilesList').addEventListener('click', async (e) => {
+  const delBtn = e.target.closest('[data-action="delete-profile"]');
+  if (delBtn) {
+    e.stopPropagation();
+    if (confirm('¿Eliminar este perfil y todos sus documentos? No se puede deshacer.')) {
+      await deleteProfileCascade(delBtn.dataset.id);
+      await renderProfiles();
+    }
+    return;
+  }
+  const card = e.target.closest('.profile-card');
+  if (card) go('categories', { profileId: card.dataset.id });
+});
+
+document.getElementById('tilePersona').addEventListener('click', () => selectProfileType('PERSONA'));
+document.getElementById('tileOtros').addEventListener('click', () => selectProfileType('OTROS'));
+function selectProfileType(type){
+  selectedProfileType = type;
+  document.getElementById('stepType').style.display = 'none';
+  document.getElementById('stepName').style.display = 'block';
+  document.getElementById('inputProfileName').focus();
+}
+document.getElementById('btnConfirmProfile').addEventListener('click', async () => {
+  const name = document.getElementById('inputProfileName').value.trim();
+  if (!name || !selectedProfileType) return;
+  const profile = await createProfile(name, selectedProfileType);
+  document.getElementById('inputProfileName').value = '';
+  document.getElementById('stepType').style.display = 'block';
+  document.getElementById('stepName').style.display = 'none';
+  selectedProfileType = null;
+  go('categories', { profileId: profile.id });
+});
+
+document.getElementById('categoriesList').addEventListener('click', async (e) => {
+  const delBtn = e.target.closest('[data-action="delete-category"]');
+  if (delBtn) {
+    e.stopPropagation();
+    if (confirm('¿Eliminar esta categoría y sus documentos?')) {
+      await deleteCategoryCascade(delBtn.dataset.id);
+      await renderCategories(currentProfileId);
+    }
+    return;
+  }
+  const card = e.target.closest('.category-card');
+  if (card) go('category-detail', { profileId: currentProfileId, categoryId: card.dataset.id });
+});
+document.getElementById('btnAddCategory').addEventListener('click', async () => {
+  const name = prompt('Nombre de la nueva categoría:');
+  if (!name || !name.trim()) return;
+  await createCategory(currentProfileId, name.trim(), '📁');
+  await renderCategories(currentProfileId);
+});
+document.getElementById('btnSearchFromCategories').addEventListener('click', () => go('search', { scopedProfileId: currentProfileId }));
+document.getElementById('btnExportProfile').addEventListener('click', () => exportBackup(currentProfileId));
+
+document.getElementById('fieldsEditList').addEventListener('change', async (e) => {
+  const input = e.target.closest('.field-value-input');
+  if (input) await updateFieldValue(input.dataset.id, input.value);
+});
+document.getElementById('fieldsEditList').addEventListener('click', async (e) => {
+  const delBtn = e.target.closest('[data-action="delete-field"]');
+  if (delBtn) {
+    if (confirm('¿Eliminar este campo?')) {
+      await deleteField(delBtn.dataset.id);
+      await renderFieldsEdit(currentProfileId);
+    }
+  }
+});
+document.getElementById('btnAddField').addEventListener('click', async () => {
+  const name = prompt('Nombre del nuevo campo (ej. Teléfono, Nº Seguridad Social...):');
+  if (!name || !name.trim()) return;
+  await createField(currentProfileId, name.trim());
+  await renderFieldsEdit(currentProfileId);
+});
+document.getElementById('btnToggleFieldsEdit').addEventListener('click', async () => {
+  fieldsEditMode = !fieldsEditMode;
+  document.getElementById('fieldsView').style.display = fieldsEditMode ? 'none' : 'block';
+  document.getElementById('fieldsEdit').style.display = fieldsEditMode ? 'block' : 'none';
+  document.getElementById('btnToggleFieldsEdit').textContent = fieldsEditMode ? '✅ Guardar y cerrar ficha' : '✏️ Modificar ficha';
+  if (!fieldsEditMode) await renderFieldsView(currentProfileId);
+});
+
+document.getElementById('documentsList').addEventListener('click', async (e) => {
+  const delBtn = e.target.closest('[data-action="delete-document"]');
+  if (delBtn) {
+    e.stopPropagation();
+    if (confirm('¿Eliminar este archivo?')) {
+      await dbDelete('documents', delBtn.dataset.id);
+      await renderCategoryDetail(currentCategoryId);
+    }
+    return;
+  }
+  const card = e.target.closest('.document-card');
+  if (card) openViewer(card.dataset.id);
+});
+async function handleIncomingFiles(fileList){
+  const files = Array.from(fileList || []);
+  for (const file of files) {
+    const label = prompt(`Etiqueta para "${file.name}" (opcional, ej. Frontal / Dorsal):`, '') || '';
+    await addDocument(currentProfileId, currentCategoryId, file, label.trim() || null);
+  }
+  await renderCategoryDetail(currentCategoryId);
+}
+document.getElementById('btnAddDocument').addEventListener('click', () => document.getElementById('fileInput').click());
+document.getElementById('fileInput').addEventListener('change', async (e) => {
+  await handleIncomingFiles(e.target.files);
+  e.target.value = '';
+});
+document.getElementById('btnAddPhoto').addEventListener('click', () => document.getElementById('cameraInput').click());
+document.getElementById('cameraInput').addEventListener('change', async (e) => {
+  await handleIncomingFiles(e.target.files);
+  e.target.value = '';
+});
+
+document.getElementById('viewerClose').addEventListener('click', () => document.getElementById('modalViewer').classList.remove('active'));
+document.getElementById('viewerDelete').addEventListener('click', async () => {
+  if (!currentDocumentId) return;
+  if (confirm('¿Eliminar este archivo?')) {
+    await dbDelete('documents', currentDocumentId);
+    document.getElementById('modalViewer').classList.remove('active');
+    await renderCategoryDetail(currentCategoryId);
+  }
+});
+
+document.getElementById('searchInput').addEventListener('input', (e) => runSearch(e.target.value));
+document.getElementById('toggleScopeCheckbox').addEventListener('change', (e) => runSearch(document.getElementById('searchInput').value));
+document.getElementById('searchResults').addEventListener('click', async (e) => {
+  const card = e.target.closest('.search-result');
+  if (card) await openViewer(card.dataset.id);
+});
+
+/* ======================================================================
+   Bloqueo de la app: PIN obligatorio + huella/rostro opcional (WebAuthn).
+   El PIN se guarda como hash (SHA-256 + sal aleatoria), nunca en claro.
+   La huella/rostro solo está disponible cuando la página se sirve desde
+   una URL https (no funciona abriendo el archivo local con file://,
+   es una restricción del propio navegador, igual que "Añadir a inicio").
+   ====================================================================== */
+const PIN_SALT_KEY = 'docufest_pin_salt';
+const PIN_HASH_KEY = 'docufest_pin_hash';
+const WEBAUTHN_CRED_KEY = 'docufest_webauthn_cred_id';
+
+function randomBytes(len){
+  const arr = new Uint8Array(len);
+  crypto.getRandomValues(arr);
+  return arr;
+}
+function bytesToHex(bytes){
+  return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+function hexToBytes(hex){
+  const out = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < out.length; i++) out[i] = parseInt(hex.substr(i * 2, 2), 16);
+  return out;
+}
+function bytesToB64url(bytes){
+  let bin = '';
+  bytes.forEach(b => bin += String.fromCharCode(b));
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function b64urlToBytes(b64url){
+  const b64 = b64url.replace(/-/g, '+').replace(/_/g, '/');
+  const bin = atob(b64);
+  return Uint8Array.from(bin, c => c.charCodeAt(0));
+}
+async function hashPin(pin, saltBytes){
+  const enc = new TextEncoder().encode(pin);
+  const combined = new Uint8Array(enc.length + saltBytes.length);
+  combined.set(enc, 0);
+  combined.set(saltBytes, enc.length);
+  const digest = await crypto.subtle.digest('SHA-256', combined);
+  return bytesToHex(new Uint8Array(digest));
+}
+function hasPinConfigured(){ return !!localStorage.getItem(PIN_HASH_KEY); }
+async function savePin(pin){
+  const salt = randomBytes(16);
+  const hash = await hashPin(pin, salt);
+  localStorage.setItem(PIN_SALT_KEY, bytesToHex(salt));
+  localStorage.setItem(PIN_HASH_KEY, hash);
+}
+async function verifyPin(pin){
+  const saltHex = localStorage.getItem(PIN_SALT_KEY);
+  if (!saltHex) return false;
+  const hash = await hashPin(pin, hexToBytes(saltHex));
+  return hash === localStorage.getItem(PIN_HASH_KEY);
+}
+
+function isBiometricSupported(){ return window.isSecureContext && !!window.PublicKeyCredential; }
+async function isPlatformAuthenticatorAvailable(){
+  if (!isBiometricSupported()) return false;
+  try { return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable(); }
+  catch (e) { return false; }
+}
+function hasBiometricConfigured(){ return !!localStorage.getItem(WEBAUTHN_CRED_KEY); }
+async function registerBiometric(){
+  const credential = await navigator.credentials.create({
+    publicKey: {
+      challenge: randomBytes(32),
+      rp: { name: 'DocuFest' },
+      user: { id: randomBytes(16), name: 'docufest-local', displayName: 'DocuFest' },
+      pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
+      authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'required' },
+      timeout: 60000
+    }
+  });
+  localStorage.setItem(WEBAUTHN_CRED_KEY, bytesToB64url(new Uint8Array(credential.rawId)));
+}
+async function unlockWithBiometric(){
+  const credIdB64 = localStorage.getItem(WEBAUTHN_CRED_KEY);
+  if (!credIdB64) return false;
+  try {
+    await navigator.credentials.get({
+      publicKey: {
+        challenge: randomBytes(32),
+        allowCredentials: [{ id: b64urlToBytes(credIdB64), type: 'public-key' }],
+        userVerification: 'required',
+        timeout: 60000
+      }
+    });
+    return true;
+  } catch (e) {
+    console.warn('Biometría cancelada o fallida', e);
+    return false;
+  }
+}
+
+function showLockSubview(name){
+  document.getElementById('lockSetup').style.display = name === 'setup' ? 'block' : 'none';
+  document.getElementById('lockUnlock').style.display = name === 'unlock' ? 'block' : 'none';
+  document.getElementById('biometricOffer').style.display = name === 'offer' ? 'block' : 'none';
+}
+async function bootLockScreen(){
+  document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
+  document.getElementById('screen-lock').classList.add('active');
+  if (!hasPinConfigured()) {
+    showLockSubview('setup');
+    return;
+  }
+  showLockSubview('unlock');
+  document.getElementById('pinUnlockInput').value = '';
+  document.getElementById('pinUnlockError').textContent = '';
+  const showBiometricBtn = hasBiometricConfigured() && await isPlatformAuthenticatorAvailable();
+  document.getElementById('btnBiometricUnlock').style.display = showBiometricBtn ? 'block' : 'none';
+}
+async function unlockAppUI(){
+  document.getElementById('screen-lock').classList.remove('active');
+  await initApp();
+}
+function lockNow(){
+  bootLockScreen();
+}
+
+document.getElementById('btnSavePin').addEventListener('click', async () => {
+  const pin = document.getElementById('pinSetupInput').value.trim();
+  const confirmPin = document.getElementById('pinSetupConfirm').value.trim();
+  const errorEl = document.getElementById('pinSetupError');
+  if (pin.length < 4) { errorEl.textContent = 'El PIN debe tener al menos 4 dígitos.'; return; }
+  if (pin !== confirmPin) { errorEl.textContent = 'Los dos PIN no coinciden.'; return; }
+  errorEl.textContent = '';
+  await savePin(pin);
+  if (await isPlatformAuthenticatorAvailable()) showLockSubview('offer');
+  else await unlockAppUI();
+});
+document.getElementById('btnEnableBiometric').addEventListener('click', async () => {
+  try { await registerBiometric(); }
+  catch (e) { alert('No se pudo activar la huella/rostro en este dispositivo. Puedes seguir usando el PIN.'); }
+  await unlockAppUI();
+});
+document.getElementById('btnSkipBiometric').addEventListener('click', async () => { await unlockAppUI(); });
+document.getElementById('btnUnlockPin').addEventListener('click', async () => {
+  const pin = document.getElementById('pinUnlockInput').value.trim();
+  const errorEl = document.getElementById('pinUnlockError');
+  if (await verifyPin(pin)) { errorEl.textContent = ''; await unlockAppUI(); }
+  else { errorEl.textContent = 'PIN incorrecto.'; document.getElementById('pinUnlockInput').value = ''; }
+});
+document.getElementById('btnBiometricUnlock').addEventListener('click', async () => {
+  const ok = await unlockWithBiometric();
+  if (ok) await unlockAppUI();
+  else document.getElementById('pinUnlockError').textContent = 'No se reconoció la huella/rostro. Prueba con el PIN.';
+});
+document.getElementById('btnLockNow').addEventListener('click', lockNow);
+document.getElementById('btnResetPin').addEventListener('click', () => {
+  if (confirm('¿Restablecer el PIN y la huella/rostro? Tendrás que configurarlos de nuevo (tus documentos no se borran).')) {
+    localStorage.removeItem(PIN_SALT_KEY);
+    localStorage.removeItem(PIN_HASH_KEY);
+    localStorage.removeItem(WEBAUTHN_CRED_KEY);
+    bootLockScreen();
+  }
+});
+
+/* Re-bloquea si el móvil estuvo con la app en segundo plano más de 30s */
+let lastHiddenAt = null;
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') {
+    lastHiddenAt = Date.now();
+  } else if (document.visibilityState === 'visible') {
+    const wasHiddenLong = lastHiddenAt && (Date.now() - lastHiddenAt > 30000);
+    const isUnlocked = !document.getElementById('screen-lock').classList.contains('active');
+    if (wasHiddenLong && isUnlocked && hasPinConfigured()) lockNow();
+    lastHiddenAt = null;
+  }
+});
+
+/* ---------- eventos: viajes ---------- */
+document.getElementById('btnTrips').addEventListener('click', () => go('trips'));
+document.getElementById('tripsList').addEventListener('click', async (e) => {
+  const delBtn = e.target.closest('[data-action="delete-trip"]');
+  if (delBtn) {
+    e.stopPropagation();
+    if (confirm('¿Eliminar este viaje y todos sus gastos/tickets? No se puede deshacer.')) {
+      await deleteTripCascade(delBtn.dataset.id);
+      await renderTrips();
+    }
+    return;
+  }
+  const card = e.target.closest('.trip-card');
+  if (card) go('trip-detail', { tripId: card.dataset.id });
+});
+document.getElementById('btnAddTrip').addEventListener('click', async () => {
+  const name = prompt('Nombre del nuevo viaje:');
+  if (!name || !name.trim()) return;
+  const trip = await createTrip(name.trim());
+  go('trip-detail', { tripId: trip.id });
+});
+
+/* ---------- eventos: gastos ---------- */
+document.getElementById('btnAddExpense').addEventListener('click', async () => {
+  const concepto = document.getElementById('expenseConcepto').value.trim();
+  const ubicacion = document.getElementById('expenseUbicacion').value.trim();
+  const tipo = document.getElementById('expenseTipo').value;
+  const coste = parseFloat(document.getElementById('expenseCoste').value) || 0;
+  const observaciones = document.getElementById('expenseObservaciones').value.trim();
+  if (!concepto) { alert('Escribe al menos el concepto.'); return; }
+  await addExpense(currentTripId, { concepto, ubicacion, tipo, coste, observaciones });
+  document.getElementById('expenseConcepto').value = '';
+  document.getElementById('expenseUbicacion').value = '';
+  document.getElementById('expenseCoste').value = '';
+  document.getElementById('expenseObservaciones').value = '';
+  await renderExpensesTotal(currentTripId);
+  await renderExpensesView(currentTripId);
+  await renderExpensesEditList(currentTripId);
+});
+document.getElementById('expensesEditList').addEventListener('change', async (e) => {
+  const input = e.target.closest('.exp-input');
+  if (!input) return;
+  const expense = await dbGet('tripExpenses', input.dataset.id);
+  if (!expense) return;
+  expense[input.dataset.field] = input.dataset.field === 'coste' ? (parseFloat(input.value) || 0) : input.value;
+  await updateExpense(expense);
+  await renderExpensesTotal(currentTripId);
+  await renderExpensesView(currentTripId);
+});
+document.getElementById('expensesEditList').addEventListener('click', async (e) => {
+  const delBtn = e.target.closest('[data-action="delete-expense"]');
+  if (delBtn) {
+    if (confirm('¿Eliminar este gasto?')) {
+      await deleteExpense(delBtn.dataset.id);
+      await renderExpensesTotal(currentTripId);
+      await renderExpensesView(currentTripId);
+      await renderExpensesEditList(currentTripId);
+    }
+  }
+});
+document.getElementById('btnToggleExpensesEdit').addEventListener('click', () => {
+  expensesEditMode = !expensesEditMode;
+  document.getElementById('expensesView').style.display = expensesEditMode ? 'none' : 'block';
+  document.getElementById('expensesEdit').style.display = expensesEditMode ? 'block' : 'none';
+  document.getElementById('btnToggleExpensesEdit').textContent = expensesEditMode ? '✅ Cerrar edición' : '✏️ Modificar gastos';
+});
+
+/* ---------- eventos: tickets ---------- */
+async function handleTicketFile(file){
+  if (!file) return;
+  const concepto = document.getElementById('ticketConcepto').value.trim();
+  await addTicket(currentTripId, concepto, file);
+  document.getElementById('ticketConcepto').value = '';
+  await renderTicketsView(currentTripId);
+  await renderTicketsEditList(currentTripId);
+}
+document.getElementById('btnAddTicketGallery').addEventListener('click', () => document.getElementById('ticketFileInput').click());
+document.getElementById('btnAddTicketCamera').addEventListener('click', () => document.getElementById('ticketCameraInput').click());
+document.getElementById('ticketFileInput').addEventListener('change', async (e) => {
+  await handleTicketFile(e.target.files[0]);
+  e.target.value = '';
+});
+document.getElementById('ticketCameraInput').addEventListener('change', async (e) => {
+  await handleTicketFile(e.target.files[0]);
+  e.target.value = '';
+});
+document.getElementById('ticketsEditList').addEventListener('click', async (e) => {
+  const delBtn = e.target.closest('[data-action="delete-ticket"]');
+  if (delBtn) {
+    if (confirm('¿Eliminar este ticket?')) {
+      await deleteTicket(delBtn.dataset.id);
+      await renderTicketsView(currentTripId);
+      await renderTicketsEditList(currentTripId);
+    }
+  }
+});
+document.getElementById('ticketsView').addEventListener('click', (e) => {
+  const card = e.target.closest('.document-card');
+  if (card) {
+    const img = card.querySelector('img');
+    if (img) window.open(img.src, '_blank');
+  }
+});
+document.getElementById('btnToggleTicketsEdit').addEventListener('click', () => {
+  ticketsEditMode = !ticketsEditMode;
+  document.getElementById('ticketsView').style.display = ticketsEditMode ? 'none' : 'grid';
+  document.getElementById('ticketsEdit').style.display = ticketsEditMode ? 'block' : 'none';
+  document.getElementById('btnToggleTicketsEdit').textContent = ticketsEditMode ? '✅ Cerrar edición' : '✏️ Modificar tickets';
+});
+
+/* ---------- eventos: Restaurantes ---------- */
+function handleRestPhotoSelected(file){
+  if (!file) return;
+  pendingRestPhoto = file;
+  document.getElementById('restPhotoStatus').textContent = 'Foto del ticket añadida ✓';
+}
+document.getElementById('btnAddRestPhotoGallery').addEventListener('click', () => document.getElementById('restPhotoFileInput').click());
+document.getElementById('btnAddRestPhotoCamera').addEventListener('click', () => document.getElementById('restPhotoCameraInput').click());
+document.getElementById('restPhotoFileInput').addEventListener('change', (e) => { handleRestPhotoSelected(e.target.files[0]); e.target.value = ''; });
+document.getElementById('restPhotoCameraInput').addEventListener('change', (e) => { handleRestPhotoSelected(e.target.files[0]); e.target.value = ''; });
+document.getElementById('btnAddRestaurant').addEventListener('click', async () => {
+  const concepto = document.getElementById('restConcepto').value.trim();
+  const precio = parseFloat(document.getElementById('restPrecio').value) || 0;
+  const numPersonas = parseInt(document.getElementById('restPersonas').value) || null;
+  const observaciones = document.getElementById('restObservaciones').value.trim();
+  if (!concepto) { alert('Escribe al menos el concepto.'); return; }
+  await addRestaurantEntry(currentTripId, { concepto, precio, numPersonas, observaciones }, pendingRestPhoto);
+  pendingRestPhoto = null;
+  document.getElementById('restConcepto').value = '';
+  document.getElementById('restPrecio').value = '';
+  document.getElementById('restPersonas').value = '';
+  document.getElementById('restObservaciones').value = '';
+  document.getElementById('restPhotoStatus').textContent = '';
+  await renderRestaurantView(currentTripId);
+  await renderRestaurantEditList(currentTripId);
+});
+document.getElementById('restaurantEditList').addEventListener('change', async (e) => {
+  const input = e.target.closest('.rest-input');
+  if (!input) return;
+  const entry = await dbGet('restaurantEntries', input.dataset.id);
+  if (!entry) return;
+  const field = input.dataset.field;
+  if (field === 'precio') entry.precio = parseFloat(input.value) || 0;
+  else if (field === 'numPersonas') entry.numPersonas = parseInt(input.value) || null;
+  else entry[field] = input.value;
+  await updateRestaurantEntry(entry);
+  await renderRestaurantView(currentTripId);
+});
+document.getElementById('restaurantEditList').addEventListener('click', async (e) => {
+  const delBtn = e.target.closest('[data-action="delete-restaurant"]');
+  if (delBtn) {
+    if (confirm('¿Eliminar este restaurante?')) {
+      await deleteRestaurantEntry(delBtn.dataset.id);
+      await renderRestaurantView(currentTripId);
+      await renderRestaurantEditList(currentTripId);
+    }
+  }
+});
+document.getElementById('btnToggleRestaurantEdit').addEventListener('click', () => {
+  restaurantEditMode = !restaurantEditMode;
+  document.getElementById('restaurantView').style.display = restaurantEditMode ? 'none' : 'block';
+  document.getElementById('restaurantEdit').style.display = restaurantEditMode ? 'block' : 'none';
+  document.getElementById('btnToggleRestaurantEdit').textContent = restaurantEditMode ? '✅ Cerrar edición' : '✏️ Modificar restaurantes';
+});
+
+/* ---------- eventos: Vacaciones ---------- */
+document.getElementById('btnVacations').addEventListener('click', () => go('vacations'));
+document.getElementById('btnVacationPrevYear').addEventListener('click', () => renderVacationScreen(currentVacationYear - 1));
+document.getElementById('btnVacationNextYear').addEventListener('click', () => renderVacationScreen(currentVacationYear + 1));
+function setSoleVacationEditMode(mode){
+  vacationEditMode = mode === 'vacation';
+  festivoEditMode = mode === 'festivo';
+  permisoEditMode = mode === 'permiso';
+  lactanciaEditMode = mode === 'lactancia';
+}
+document.getElementById('btnToggleVacationEdit').addEventListener('click', () => {
+  setSoleVacationEditMode(vacationEditMode ? null : 'vacation');
+  renderVacationScreen(currentVacationYear);
+});
+document.getElementById('btnToggleFestivoEdit').addEventListener('click', () => {
+  setSoleVacationEditMode(festivoEditMode ? null : 'festivo');
+  renderVacationScreen(currentVacationYear);
+});
+document.getElementById('btnTogglePermisoEdit').addEventListener('click', () => {
+  setSoleVacationEditMode(permisoEditMode ? null : 'permiso');
+  renderVacationScreen(currentVacationYear);
+});
+document.getElementById('btnToggleLactanciaEdit').addEventListener('click', () => {
+  setSoleVacationEditMode(lactanciaEditMode ? null : 'lactancia');
+  renderVacationScreen(currentVacationYear);
+});
+document.getElementById('btnSaveVacationAssigned').addEventListener('click', async () => {
+  const days = parseInt(document.getElementById('inputVacationAssigned').value) || 0;
+  await setVacationYearAssignedDays(currentVacationYear, days);
+  await renderVacationYearSummary(currentVacationYear);
+  await renderVacationYearsTable();
+});
+document.getElementById('vacationCalendar').addEventListener('click', async (e) => {
+  const cell = e.target.closest('.cal-editable[data-date]');
+  if (!cell) return;
+  if (vacationEditMode) {
+    await toggleVacationDay(cell.dataset.date);
+    await renderVacationYearSummary(currentVacationYear);
+  } else if (festivoEditMode) {
+    await toggleHolidayDay(cell.dataset.date);
+  } else if (permisoEditMode) {
+    await togglePermisoDay(cell.dataset.date);
+  } else if (lactanciaEditMode) {
+    await toggleLactanciaDay(cell.dataset.date);
+  } else {
+    return;
+  }
+  await renderVacationCalendar(currentVacationYear);
+  await renderVacationYearsTable();
+});
+document.getElementById('vacationYearsTable').addEventListener('click', (e) => {
+  const row = e.target.closest('[data-year]');
+  if (row) renderVacationScreen(parseInt(row.dataset.year));
+});
+document.getElementById('btnToggleAnnotationsEdit').addEventListener('click', () => {
+  annotationsEditMode = !annotationsEditMode;
+  document.getElementById('annotationsView').style.display = annotationsEditMode ? 'none' : 'block';
+  document.getElementById('annotationsEdit').style.display = annotationsEditMode ? 'block' : 'none';
+  document.getElementById('btnToggleAnnotationsEdit').textContent = annotationsEditMode ? '✅ Cerrar edición' : '✏️ Modificar anotaciones';
+});
+document.getElementById('btnAddAnnotation').addEventListener('click', async () => {
+  const start = document.getElementById('annotationStart').value;
+  const end = document.getElementById('annotationEnd').value;
+  const concepto = document.getElementById('annotationConcepto').value.trim();
+  if (!start || !concepto) { alert('Indica al menos la fecha de inicio y el concepto.'); return; }
+  await addAnnotation(start, end, concepto);
+  document.getElementById('annotationStart').value = '';
+  document.getElementById('annotationEnd').value = '';
+  document.getElementById('annotationConcepto').value = '';
+  await renderAnnotations();
+});
+document.getElementById('annotationsEditList').addEventListener('click', async (e) => {
+  const delBtn = e.target.closest('[data-action="delete-annotation"]');
+  if (delBtn) {
+    if (confirm('¿Eliminar esta anotación?')) {
+      await deleteAnnotation(delBtn.dataset.id);
+      await renderAnnotations();
+    }
+  }
+});
+
+/* ---------- eventos: Lecturas ---------- */
+document.getElementById('btnReadings').addEventListener('click', () => go('readings-years'));
+document.getElementById('readingYearsList').addEventListener('click', async (e) => {
+  const delBtn = e.target.closest('[data-action="delete-reading-year"]');
+  if (delBtn) {
+    e.stopPropagation();
+    if (confirm('¿Eliminar este año y todos sus libros? No se puede deshacer.')) {
+      await deleteReadingYearCascade(delBtn.dataset.yearKey);
+      await renderReadingYears();
+    }
+    return;
+  }
+  const card = e.target.closest('.trip-card[data-year-key]');
+  if (card) go('readings-detail', { yearKey: card.dataset.yearKey });
+});
+document.getElementById('btnAddReadingYear').addEventListener('click', async () => {
+  const input = prompt('Año de lectura (ej. 2027):');
+  if (!input) return;
+  const year = parseInt(input.trim());
+  if (isNaN(year) || year < 2022) { alert('Introduce un año de 2022 en adelante. Para años anteriores usa "PRE 2022".'); return; }
+  await ensureReadingYearBucket(String(year));
+  go('readings-detail', { yearKey: String(year) });
+});
+document.getElementById('btnImportReadingsExcel').addEventListener('click', () => document.getElementById('readingsExcelInput').click());
+document.getElementById('btnExportReadingsExcel').addEventListener('click', () => exportReadingsToXlsx());
+document.getElementById('btnReadingsStats').addEventListener('click', () => go('readings-stats'));
+document.getElementById('btnFormatReadings').addEventListener('click', async () => {
+  if (!confirm('Esto borrará TODOS los libros y años guardados en Lecturas. No se puede deshacer. ¿Continuar?')) return;
+  if (!confirm('Confirma otra vez: se eliminarán todas las lecturas para poder importar un Excel desde cero.')) return;
+  await clearAllReadings();
+  await renderReadingYears();
+  alert('Datos de Lecturas borrados. Selecciona ahora el Excel que quieres importar.');
+  document.getElementById('readingsExcelInput').click();
+});
+document.getElementById('readingsExcelInput').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  try {
+    const entries = await parseXlsxReadings(file);
+    if (entries.length === 0) { alert('No se encontraron filas de datos en el Excel.'); return; }
+    const { updated, created } = await importReadingsFromEntries(entries);
+    alert(`Importación completa: ${created} libro(s) nuevo(s), ${updated} actualizado(s).`);
+    await renderReadingYears();
+  } catch (err) {
+    console.error(err);
+    alert('No se pudo leer el Excel: ' + err.message);
+  }
+});
+document.getElementById('btnAddReading').addEventListener('click', async () => {
+  const titulo = document.getElementById('readingTitulo').value.trim();
+  if (!titulo) { alert('Escribe al menos el título.'); return; }
+  const autor = document.getElementById('readingAutor').value.trim();
+  const anoEscrito = document.getElementById('readingAnoEscrito').value.trim();
+  const premios = document.getElementById('readingPremios').value.trim();
+  await addReading(currentReadingYearKey, { titulo, autor, anoEscrito, premios });
+  document.getElementById('readingTitulo').value = '';
+  document.getElementById('readingAutor').value = '';
+  document.getElementById('readingAnoEscrito').value = '';
+  document.getElementById('readingPremios').value = '';
+  await renderReadingsTableView(currentReadingYearKey);
+  await renderReadingsEditList(currentReadingYearKey);
+});
+document.getElementById('readingsEditList').addEventListener('change', async (e) => {
+  const yearSelect = e.target.closest('.reading-year-select');
+  if (yearSelect) {
+    const reading = await dbGet('readings', yearSelect.dataset.id);
+    if (!reading) return;
+    reading.yearKey = yearSelect.value;
+    await updateReading(reading);
+    await renderReadingsTableView(currentReadingYearKey);
+    await renderReadingsEditList(currentReadingYearKey);
+    return;
+  }
+  const input = e.target.closest('.reading-input');
+  if (!input) return;
+  const reading = await dbGet('readings', input.dataset.id);
+  if (!reading) return;
+  reading[input.dataset.field] = input.value;
+  await updateReading(reading);
+  await renderReadingsTableView(currentReadingYearKey);
+});
+document.getElementById('readingsEditList').addEventListener('click', async (e) => {
+  const delBtn = e.target.closest('[data-action="delete-reading"]');
+  if (delBtn) {
+    if (confirm('¿Eliminar este libro?')) {
+      await deleteReading(delBtn.dataset.id);
+      await renderReadingsTableView(currentReadingYearKey);
+      await renderReadingsEditList(currentReadingYearKey);
+    }
+  }
+});
+document.getElementById('btnToggleReadingsEdit').addEventListener('click', () => {
+  readingsEditMode = !readingsEditMode;
+  document.getElementById('readingsTableView').style.display = readingsEditMode ? 'none' : 'block';
+  document.getElementById('readingsTableEdit').style.display = readingsEditMode ? 'block' : 'none';
+  document.getElementById('btnToggleReadingsEdit').textContent = readingsEditMode ? '✅ Cerrar edición' : '✏️ Modificar';
+});
+
+/* ---------- eventos: Coche ---------- */
+document.getElementById('btnCar').addEventListener('click', () => go('car-home'));
+document.getElementById('btnCarVehicles').addEventListener('click', () => go('car-vehicles'));
+document.getElementById('btnCarFuel').addEventListener('click', () => go('car-fuel-years'));
+document.getElementById('btnCarInsurance').addEventListener('click', () => go('car-insurance'));
+document.getElementById('btnCarGarage').addEventListener('click', () => go('car-garage'));
+
+document.getElementById('btnAddVehicle').addEventListener('click', async () => {
+  const matricula = document.getElementById('vehicleMatricula').value.trim();
+  const marca = document.getElementById('vehicleMarca').value.trim();
+  const modelo = document.getElementById('vehicleModelo').value.trim();
+  if (!matricula) { alert('Escribe al menos la matrícula.'); return; }
+  await addVehicle({ matricula, marca, modelo });
+  document.getElementById('vehicleMatricula').value = '';
+  document.getElementById('vehicleMarca').value = '';
+  document.getElementById('vehicleModelo').value = '';
+  await renderVehiclesView();
+  await renderVehiclesEditList();
+});
+document.getElementById('vehiclesEditList').addEventListener('change', async (e) => {
+  const input = e.target.closest('.vehicle-input');
+  if (!input) return;
+  const vehicle = await dbGet('vehicles', input.dataset.id);
+  if (!vehicle) return;
+  vehicle[input.dataset.field] = input.value;
+  await updateVehicle(vehicle);
+  await renderVehiclesView();
+});
+document.getElementById('vehiclesEditList').addEventListener('click', async (e) => {
+  const delBtn = e.target.closest('[data-action="delete-vehicle"]');
+  if (delBtn) {
+    if (confirm('¿Eliminar este vehículo? Los gastos ya asociados no se borrarán, pero dejarán de mostrar la matrícula.')) {
+      await deleteVehicle(delBtn.dataset.id);
+      await renderVehiclesView();
+      await renderVehiclesEditList();
+    }
+  }
+});
+document.getElementById('btnToggleVehiclesEdit').addEventListener('click', () => {
+  vehiclesEditMode = !vehiclesEditMode;
+  document.getElementById('vehiclesView').style.display = vehiclesEditMode ? 'none' : 'block';
+  document.getElementById('vehiclesEdit').style.display = vehiclesEditMode ? 'block' : 'none';
+  document.getElementById('btnToggleVehiclesEdit').textContent = vehiclesEditMode ? '✅ Cerrar edición' : '✏️ Modificar';
+});
+
+document.getElementById('carFuelYearsList').addEventListener('click', async (e) => {
+  const delBtn = e.target.closest('[data-action="delete-car-fuel-year"]');
+  if (delBtn) {
+    e.stopPropagation();
+    if (confirm('¿Eliminar este año y todos sus repostajes? No se puede deshacer.')) {
+      await deleteCarFuelYearCascade(delBtn.dataset.yearKey);
+      await renderCarFuelYears();
+    }
+    return;
+  }
+  const card = e.target.closest('.card[data-year-key]');
+  if (card) go('car-fuel-detail', { yearKey: card.dataset.yearKey });
+});
+document.getElementById('btnAddCarFuelYear').addEventListener('click', async () => {
+  const input = prompt('Año (ej. 2027):');
+  if (!input) return;
+  const year = parseInt(input.trim());
+  if (isNaN(year) || year < 1990 || year > 2100) { alert('Introduce un año válido.'); return; }
+  await ensureCarFuelYearBucket(String(year));
+  go('car-fuel-detail', { yearKey: String(year) });
+});
+document.getElementById('btnAddCarFuel').addEventListener('click', async () => {
+  const fecha = document.getElementById('carFuelFecha').value;
+  const precio = document.getElementById('carFuelPrecio').value;
+  const gasolinera = document.getElementById('carFuelGasolinera').value.trim();
+  const anotaciones = document.getElementById('carFuelAnotaciones').value.trim();
+  const vehicleId = document.getElementById('carFuelVehicle').value || '';
+  if (!fecha) { alert('Selecciona una fecha.'); return; }
+  await addCarFuelEntry(currentCarFuelYearKey, { fecha, precio, gasolinera, anotaciones, vehicleId });
+  document.getElementById('carFuelFecha').value = '';
+  document.getElementById('carFuelPrecio').value = '';
+  document.getElementById('carFuelGasolinera').value = '';
+  document.getElementById('carFuelAnotaciones').value = '';
+  await renderCarFuelTotal(currentCarFuelYearKey);
+  await renderCarFuelView(currentCarFuelYearKey);
+  await renderCarFuelEditList(currentCarFuelYearKey);
+});
+document.getElementById('carFuelVehicleFilterSelect').addEventListener('change', async (e) => {
+  carFuelVehicleFilter = e.target.value;
+  await renderCarFuelTotal(currentCarFuelYearKey);
+  await renderCarFuelView(currentCarFuelYearKey);
+  await renderCarFuelEditList(currentCarFuelYearKey);
+});
+document.getElementById('carFuelEditList').addEventListener('change', async (e) => {
+  const input = e.target.closest('.car-fuel-input');
+  if (!input) return;
+  const entry = await dbGet('carFuelEntries', input.dataset.id);
+  if (!entry) return;
+  entry[input.dataset.field] = input.value;
+  await updateCarFuelEntry(entry);
+  await renderCarFuelTotal(currentCarFuelYearKey);
+  await renderCarFuelView(currentCarFuelYearKey);
+});
+document.getElementById('carFuelEditList').addEventListener('click', async (e) => {
+  const delBtn = e.target.closest('[data-action="delete-car-fuel"]');
+  if (delBtn) {
+    if (confirm('¿Eliminar este repostaje?')) {
+      await deleteCarFuelEntry(delBtn.dataset.id);
+      await renderCarFuelTotal(currentCarFuelYearKey);
+      await renderCarFuelView(currentCarFuelYearKey);
+      await renderCarFuelEditList(currentCarFuelYearKey);
+    }
+  }
+});
+document.getElementById('btnToggleCarFuelEdit').addEventListener('click', () => {
+  carFuelEditMode = !carFuelEditMode;
+  document.getElementById('carFuelView').style.display = carFuelEditMode ? 'none' : 'block';
+  document.getElementById('carFuelEdit').style.display = carFuelEditMode ? 'block' : 'none';
+  document.getElementById('btnToggleCarFuelEdit').textContent = carFuelEditMode ? '✅ Cerrar edición' : '✏️ Modificar';
+});
+
+document.getElementById('btnAddCarInsurance').addEventListener('click', async () => {
+  const anio = document.getElementById('carInsuranceAnio').value;
+  const coste = document.getElementById('carInsuranceCoste').value;
+  const compania = document.getElementById('carInsuranceCompania').value.trim();
+  const vehicleId = document.getElementById('carInsuranceVehicle').value || '';
+  if (!anio) { alert('Indica el año.'); return; }
+  await addCarInsurance({ anio: parseInt(anio), coste, compania, vehicleId });
+  document.getElementById('carInsuranceAnio').value = '';
+  document.getElementById('carInsuranceCoste').value = '';
+  document.getElementById('carInsuranceCompania').value = '';
+  await renderCarInsuranceTotal();
+  await renderCarInsuranceView();
+  await renderCarInsuranceEditList();
+});
+document.getElementById('carInsuranceVehicleFilterSelect').addEventListener('change', async (e) => {
+  carInsuranceVehicleFilter = e.target.value;
+  await renderCarInsuranceTotal();
+  await renderCarInsuranceView();
+  await renderCarInsuranceEditList();
+});
+document.getElementById('carInsuranceEditList').addEventListener('change', async (e) => {
+  const input = e.target.closest('.car-insurance-input');
+  if (!input) return;
+  const entry = await dbGet('carInsuranceEntries', input.dataset.id);
+  if (!entry) return;
+  entry[input.dataset.field] = input.dataset.field === 'anio' ? parseInt(input.value) : input.value;
+  await updateCarInsurance(entry);
+  await renderCarInsuranceTotal();
+  await renderCarInsuranceView();
+});
+document.getElementById('carInsuranceEditList').addEventListener('click', async (e) => {
+  const delBtn = e.target.closest('[data-action="delete-car-insurance"]');
+  if (delBtn) {
+    if (confirm('¿Eliminar esta póliza?')) {
+      await deleteCarInsurance(delBtn.dataset.id);
+      await renderCarInsuranceTotal();
+      await renderCarInsuranceView();
+      await renderCarInsuranceEditList();
+    }
+  }
+});
+document.getElementById('btnToggleCarInsuranceEdit').addEventListener('click', () => {
+  carInsuranceEditMode = !carInsuranceEditMode;
+  document.getElementById('carInsuranceView').style.display = carInsuranceEditMode ? 'none' : 'block';
+  document.getElementById('carInsuranceEdit').style.display = carInsuranceEditMode ? 'block' : 'none';
+  document.getElementById('btnToggleCarInsuranceEdit').textContent = carInsuranceEditMode ? '✅ Cerrar edición' : '✏️ Modificar';
+});
+
+document.getElementById('btnAddCarGarage').addEventListener('click', async () => {
+  const fecha = document.getElementById('carGarageFecha').value;
+  const concepto = document.getElementById('carGarageConcepto').value.trim();
+  const observaciones = document.getElementById('carGarageObservaciones').value.trim();
+  const vehicleId = document.getElementById('carGarageVehicle').value || '';
+  if (!concepto) { alert('Escribe al menos el concepto.'); return; }
+  await addCarGarageEntry({ fecha, concepto, observaciones, vehicleId });
+  document.getElementById('carGarageFecha').value = '';
+  document.getElementById('carGarageConcepto').value = '';
+  document.getElementById('carGarageObservaciones').value = '';
+  await renderCarGarageView();
+  await renderCarGarageEditList();
+});
+document.getElementById('carGarageVehicleFilterSelect').addEventListener('change', async (e) => {
+  carGarageVehicleFilter = e.target.value;
+  await renderCarGarageView();
+  await renderCarGarageEditList();
+});
+document.getElementById('carGarageEditList').addEventListener('change', async (e) => {
+  const input = e.target.closest('.car-garage-input');
+  if (!input) return;
+  const entry = await dbGet('carGarageEntries', input.dataset.id);
+  if (!entry) return;
+  entry[input.dataset.field] = input.value;
+  await updateCarGarageEntry(entry);
+  await renderCarGarageView();
+});
+document.getElementById('carGarageEditList').addEventListener('click', async (e) => {
+  const delBtn = e.target.closest('[data-action="delete-car-garage"]');
+  if (delBtn) {
+    if (confirm('¿Eliminar esta entrada de taller?')) {
+      await deleteCarGarageEntry(delBtn.dataset.id);
+      await renderCarGarageView();
+      await renderCarGarageEditList();
+    }
+  }
+});
+document.getElementById('btnToggleCarGarageEdit').addEventListener('click', () => {
+  carGarageEditMode = !carGarageEditMode;
+  document.getElementById('carGarageView').style.display = carGarageEditMode ? 'none' : 'block';
+  document.getElementById('carGarageEdit').style.display = carGarageEditMode ? 'block' : 'none';
+  document.getElementById('btnToggleCarGarageEdit').textContent = carGarageEditMode ? '✅ Cerrar edición' : '✏️ Modificar';
+});
+
+/* ---------- arranque ---------- */
+async function initApp(){
+  const existingReadingYearBuckets = await dbGetAll('readingYears');
+  if (existingReadingYearBuckets.length === 0) await ensurePre2022Bucket();
+  history.replaceState({ view: 'welcome' }, '', '#welcome');
+  await applyState({ view: 'welcome' });
+}
+bootLockScreen();
+</script>
+</body>
+</html>
