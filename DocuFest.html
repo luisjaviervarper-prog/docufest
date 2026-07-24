@@ -244,6 +244,10 @@
         <input type="file" id="fullBackupImportInput" accept=".dfbackup,application/octet-stream,*/*" style="display:none">
         <button class="btn-outline" id="btnFormatAllData" style="color:var(--accent-crimson); border-color:var(--accent-crimson);">🗑 Formatear todos los datos</button>
       </div>
+      <div class="toggle-row">
+        <input type="checkbox" id="toggleAutoFullBackup">
+        <label for="toggleAutoFullBackup">Backup automático diario (descarga cifrada al abrir la app)</label>
+      </div>
       <p class="help-text">
         Tus documentos se guardan de forma privada en este navegador, en este móvil.
         Usa "Exportar copia (.zip)" dentro de un perfil para guardar además una copia
@@ -252,9 +256,16 @@
       <p class="help-text">
         "Exportar todos los datos" crea un único archivo con absolutamente todo
         (perfiles, documentos, viajes, vacaciones, lecturas, coche...), protegido
-        con un PIN que tú eliges. Guárdalo en un sitio seguro (nube, email, etc.):
-        si formateas el móvil o cambias de teléfono, usa "Importar datos" con ese
-        mismo archivo y PIN para recuperarlo todo de golpe.
+        con tu PIN habitual de DocuFest (el mismo con el que desbloqueas la app).
+        Guárdalo en un sitio seguro: si formateas el móvil o cambias de teléfono,
+        usa "Importar datos" con ese mismo archivo y PIN para recuperarlo todo de golpe.
+      </p>
+      <p class="help-text">
+        Con "Backup automático diario" activado, cada día que abras y desbloquees
+        la app con el PIN (no con huella/rostro) se descargará sola una copia
+        cifrada a "Descargas", sin preguntar nada. Si activas en tu móvil que
+        Google Drive/Fotos haga copia automática de esa carpeta, el archivo
+        llegará también a Drive sin que DocuFest necesite acceder a tu cuenta de Google.
       </p>
     </div>
   </section>
@@ -1431,6 +1442,23 @@ function isAutoArchiveEnabled(){
 function setAutoArchiveEnabled(value){
   localStorage.setItem(AUTO_ARCHIVE_KEY, value ? 'true' : 'false');
 }
+
+/* ---------- Backup completo diario automático -----------
+   Una web no puede subir archivos a Drive en segundo plano sin abrirla, así
+   que la automatización real posible es: cada vez que el usuario desbloquea
+   la app (si ha pasado al menos un día desde la última vez), descargar sola
+   la copia de seguridad cifrada a "Descargas". Si en el móvil se activa el
+   backup automático de Google Drive/Fotos sobre esa carpeta, el archivo
+   termina subido a Drive sin que la app necesite ninguna cuenta de Google. */
+const AUTO_FULL_BACKUP_ENABLED_KEY = 'docufest_auto_full_backup_enabled';
+const AUTO_FULL_BACKUP_LAST_DATE_KEY = 'docufest_auto_full_backup_last_date';
+function isAutoFullBackupEnabled(){
+  return localStorage.getItem(AUTO_FULL_BACKUP_ENABLED_KEY) === 'true'; // desactivado por defecto
+}
+function setAutoFullBackupEnabled(value){
+  localStorage.setItem(AUTO_FULL_BACKUP_ENABLED_KEY, value ? 'true' : 'false');
+}
+function todayDateStr(){ return new Date().toISOString().slice(0, 10); }
 async function archiveSingleDocument(doc, profileName, categoryName){
   const safe = (s) => (s || 'sin_nombre').toString().replace(/[\\/:*?"<>|]/g, '_');
   const labelPart = doc.label ? safe(doc.label) + '_' : '';
@@ -1633,6 +1661,7 @@ async function applyState(state){
 async function refreshWelcomeButton(){
   const profiles = await dbGetAll('profiles');
   document.getElementById('btnOpenProfile').disabled = profiles.length === 0;
+  document.getElementById('toggleAutoFullBackup').checked = isAutoFullBackupEnabled();
 }
 
 /* ---------- render: perfiles ---------- */
@@ -2677,6 +2706,58 @@ async function buildFullBackupBlob(pin){
   finalBytes.set(ciphertext, magicBytes.length + salt.length + iv.length);
   return new Blob([finalBytes], { type: 'application/octet-stream' });
 }
+function downloadFullBackupBlob(blob){
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `DocuFest_copia_completa_${todayDateStr()}.dfbackup`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+/* Devuelve el PIN a usar para proteger la copia de seguridad, reutilizando
+   el PIN habitual de la app siempre que sea posible (así el usuario solo
+   tiene un PIN que recordar). Si ya está en memoria (se escribió al
+   desbloquear o al configurarlo), no vuelve a preguntar. Si no, y ya existe
+   un PIN configurado, pide que lo escriba una vez (no uno "nuevo"). Solo si
+   la app no tiene ningún PIN configurado (caso raro) deja crear uno
+   específico para el backup. */
+async function getBackupPin(){
+  if (sessionPin) return sessionPin;
+  if (hasPinConfigured()) {
+    return await askBackupPin({
+      title: '🔒 PIN de DocuFest',
+      help: 'Introduce tu PIN habitual de DocuFest (el mismo con el que desbloqueas la app) para proteger esta copia de seguridad.',
+      requireConfirm: false
+    });
+  }
+  return await askBackupPin({
+    title: '💾 Crear copia de seguridad',
+    help: 'Elige un PIN para proteger este archivo (mínimo 4 caracteres). Lo necesitarás para restaurarlo.',
+    requireConfirm: true
+  });
+}
+/* Backup automático diario: se llama cada vez que se desbloquea la app. Si
+   está activado, ha pasado al menos un día desde el último, y tenemos el
+   PIN en memoria (se escribió al desbloquear), descarga sola una copia
+   cifrada a "Descargas" sin pedir nada. Si no tenemos el PIN en memoria
+   (por ejemplo, se desbloqueó con huella) simplemente se salta esta vez y
+   lo vuelve a intentar la próxima vez que se escriba el PIN. */
+async function maybeRunDailyAutoBackup(){
+  if (!isAutoFullBackupEnabled()) return;
+  if (!window.isSecureContext || !window.crypto || !window.crypto.subtle) return;
+  const today = todayDateStr();
+  if (localStorage.getItem(AUTO_FULL_BACKUP_LAST_DATE_KEY) === today) return;
+  if (!sessionPin) return;
+  try {
+    const blob = await buildFullBackupBlob(sessionPin);
+    downloadFullBackupBlob(blob);
+    localStorage.setItem(AUTO_FULL_BACKUP_LAST_DATE_KEY, today);
+  } catch (err) {
+    console.error('Backup automático diario fallido:', err);
+  }
+}
 async function restoreFullBackupFromFile(file, pin){
   const buffer = await file.arrayBuffer();
   const bytes = new Uint8Array(buffer);
@@ -2794,6 +2875,7 @@ document.getElementById('btnSearchGlobal').addEventListener('click', () => go('s
 document.getElementById('btnExportAll').addEventListener('click', () => exportBackup(null));
 document.getElementById('toggleAutoArchive').addEventListener('change', (e) => setAutoArchiveEnabled(e.target.checked));
 
+document.getElementById('toggleAutoFullBackup').addEventListener('change', (e) => setAutoFullBackupEnabled(e.target.checked));
 document.getElementById('btnExportFullBackup').addEventListener('click', async () => {
   try {
     assertCryptoAvailable();
@@ -2801,23 +2883,12 @@ document.getElementById('btnExportFullBackup').addEventListener('click', async (
     alert(err.message);
     return;
   }
-  const pin = await askBackupPin({
-    title: '💾 Crear copia de seguridad',
-    help: 'Elige un PIN para proteger este archivo (mínimo 4 caracteres). Lo necesitarás para restaurarlo.',
-    requireConfirm: true
-  });
+  const pin = await getBackupPin();
   if (!pin) return;
   try {
     const blob = await buildFullBackupBlob(pin);
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `DocuFest_copia_completa_${new Date().toISOString().slice(0, 10)}.dfbackup`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 5000);
-    alert('Copia de seguridad creada. Guarda bien el archivo y el PIN: los necesitarás juntos para restaurarla.');
+    downloadFullBackupBlob(blob);
+    alert('Copia de seguridad creada. Guarda bien el archivo: se protege con tu PIN habitual de DocuFest.');
   } catch (err) {
     console.error(err);
     alert('No se pudo crear la copia de seguridad: ' + err.message);
@@ -2840,7 +2911,7 @@ document.getElementById('fullBackupImportInput').addEventListener('change', asyn
   for (;;) {
     const pin = await askBackupPin({
       title: '📥 Restaurar copia de seguridad',
-      help: 'Introduce el PIN con el que protegiste este archivo.',
+      help: 'Introduce el PIN con el que protegiste este archivo (normalmente, tu PIN habitual de DocuFest).',
       requireConfirm: false,
       initialError: modalError
     });
@@ -3015,6 +3086,13 @@ document.getElementById('searchResults').addEventListener('click', async (e) => 
 const PIN_SALT_KEY = 'docufest_pin_salt';
 const PIN_HASH_KEY = 'docufest_pin_hash';
 const WEBAUTHN_CRED_KEY = 'docufest_webauthn_cred_id';
+/* El PIN en claro NUNCA se guarda en disco (ni localStorage ni IndexedDB) —
+   solo se mantiene en esta variable en memoria mientras dura la sesión
+   (se pierde al recargar la página), para poder reutilizarlo automáticamente
+   como PIN de las copias de seguridad sin pedirlo dos veces. Si desbloqueas
+   con huella/rostro en vez de con el PIN, esta variable queda vacía hasta
+   que lo escribas una vez. */
+let sessionPin = null;
 
 function randomBytes(len){
   const arr = new Uint8Array(len);
@@ -3121,6 +3199,7 @@ async function bootLockScreen(){
 async function unlockAppUI(){
   document.getElementById('screen-lock').classList.remove('active');
   await initApp();
+  await maybeRunDailyAutoBackup();
 }
 function lockNow(){
   bootLockScreen();
@@ -3134,6 +3213,7 @@ document.getElementById('btnSavePin').addEventListener('click', async () => {
   if (pin !== confirmPin) { errorEl.textContent = 'Los dos PIN no coinciden.'; return; }
   errorEl.textContent = '';
   await savePin(pin);
+  sessionPin = pin;
   if (await isPlatformAuthenticatorAvailable()) showLockSubview('offer');
   else await unlockAppUI();
 });
@@ -3146,7 +3226,7 @@ document.getElementById('btnSkipBiometric').addEventListener('click', async () =
 document.getElementById('btnUnlockPin').addEventListener('click', async () => {
   const pin = document.getElementById('pinUnlockInput').value.trim();
   const errorEl = document.getElementById('pinUnlockError');
-  if (await verifyPin(pin)) { errorEl.textContent = ''; await unlockAppUI(); }
+  if (await verifyPin(pin)) { errorEl.textContent = ''; sessionPin = pin; await unlockAppUI(); }
   else { errorEl.textContent = 'PIN incorrecto.'; document.getElementById('pinUnlockInput').value = ''; }
 });
 document.getElementById('btnBiometricUnlock').addEventListener('click', async () => {
@@ -3160,6 +3240,7 @@ document.getElementById('btnResetPin').addEventListener('click', () => {
     localStorage.removeItem(PIN_SALT_KEY);
     localStorage.removeItem(PIN_HASH_KEY);
     localStorage.removeItem(WEBAUTHN_CRED_KEY);
+    sessionPin = null;
     bootLockScreen();
   }
 });
