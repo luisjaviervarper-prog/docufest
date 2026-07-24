@@ -2099,9 +2099,10 @@ async function renderVacationCalendar(year){
 async function renderVacationYearsTable(){
   const yearRecords = await dbGetAll('vacationYears');
   const allDays = await dbGetAll('vacationDays');
-  const yearsSet = new Set(yearRecords.map(y => y.year));
-  allDays.forEach(d => yearsSet.add(parseInt(d.dateStr.slice(0, 4))));
-  const years = [...yearsSet].sort((a, b) => a - b);
+  // Solo años con al menos un día de vacaciones marcado en el calendario
+  // (un año con "días asignados" pero sin ningún día disfrutado no aparece).
+  const yearsWithDays = new Set(allDays.map(d => parseInt(d.dateStr.slice(0, 4))));
+  const years = [...yearsWithDays].sort((a, b) => a - b);
   const recordMap = Object.fromEntries(yearRecords.map(y => [y.year, y]));
   document.getElementById('vacationYearsTable').innerHTML = years.map(y => {
     const assigned = recordMap[y] ? recordMap[y].assignedDays : 0;
@@ -2112,7 +2113,7 @@ async function renderVacationYearsTable(){
         <span class="field-row-value">Asig. ${assigned} · Disf. ${taken} · Rest. ${assigned - taken}</span>
       </div>
     `;
-  }).join('') || '<p class="help-text" style="padding:10px 0;">Sin años registrados todavía.</p>';
+  }).join('') || '<p class="help-text" style="padding:10px 0;">Sin días de vacaciones marcados todavía.</p>';
 }
 async function renderAnnotationsView(){
   const items = await dbGetAll('annotations');
