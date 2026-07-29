@@ -2225,11 +2225,12 @@ async function renderRestaurantView(tripId){
           <span class="card-muted">${r.fecha ? escapeHtml(formatDateRange(r.fecha, r.fecha)) : '—'}</span>
           <span class="card-title" style="color:var(--accent-ember); white-space:nowrap;">${Number(r.precio || 0).toFixed(2)} €</span>
         </div>
+        <div style="display:flex; justify-content:space-between; gap:8px; margin-top:4px;">
+          <span class="card-muted">Nº personas: ${r.numPersonas || '—'}</span>
+          ${Number(r.numPersonas) > 0 ? `<span class="card-muted" style="color:var(--accent-brass); font-weight:700;">Por persona: ${(Number(r.precio || 0) / Number(r.numPersonas)).toFixed(2)} €</span>` : ''}
+        </div>
         <div class="rest-details" style="display:none; margin-top:8px;">
           ${locationBits.length ? `<div class="card-muted">${locationBits.join(' · ')}</div>` : ''}
-          <div style="display:flex; justify-content:space-between; gap:8px; margin-top:4px;">
-            <span class="card-muted">Nº personas: ${r.numPersonas || '—'}</span>
-          </div>
           ${r.observaciones ? `<div class="card-muted">${escapeHtml(r.observaciones)}</div>` : ''}
           ${thumb}
         </div>
