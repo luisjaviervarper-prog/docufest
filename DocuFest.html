@@ -460,6 +460,11 @@
       <!-- Restaurantes: fichas con foto de ticket -->
       <div id="restaurantesSection" style="display:none;">
         <div class="section-title">Restaurantes</div>
+        <div style="display:flex; align-items:center; justify-content:center; gap:20px; margin-bottom:10px;">
+          <button class="icon-btn" id="btnRestPrevYear">◀</button>
+          <span class="app-title" id="restYearLabel" style="font-size:20px;">2026</span>
+          <button class="icon-btn" id="btnRestNextYear">▶</button>
+        </div>
         <div id="restaurantView"></div>
         <div id="restaurantEdit" style="display:none;">
           <div class="tile" style="padding:14px;">
@@ -495,9 +500,19 @@
         <input type="file" id="restPhotoFileInput" accept="image/*" style="display:none">
         <input type="file" id="restPhotoCameraInput" accept="image/*" capture="environment" style="display:none">
         <button class="btn-outline" id="btnToggleRestaurantEdit">✏️ Modificar restaurantes</button>
+        <button class="btn-outline" id="btnRestaurantStats">📊 Estadísticas</button>
       </div>
 
     </div>
+  </section>
+
+  <!-- ===================== RESTAURANTES: ESTADÍSTICAS ===================== -->
+  <section id="screen-restaurant-stats" class="screen">
+    <div class="topbar">
+      <button class="icon-btn" onclick="history.back()">←</button>
+      <h1>📊 Estadísticas de restaurantes</h1>
+    </div>
+    <div class="content" id="restaurantStatsBody"></div>
   </section>
 
   <!-- ===================== VACACIONES ===================== -->
@@ -1796,6 +1811,7 @@ let annotationsEditMode = false;
 let currentReadingYearKey = null;
 let readingsEditMode = false;
 let currentVacationYear = new Date().getFullYear();
+let currentRestaurantYear = new Date().getFullYear();
 let currentCarFuelYearKey = null;
 let carFuelEditMode = false;
 let carInsuranceEditMode = false;
@@ -1833,6 +1849,7 @@ async function applyState(state){
   if (state.view === 'search') await renderSearch(state.scopedProfileId || null);
   if (state.view === 'trips') await renderTrips();
   if (state.view === 'trip-detail') await renderTripDetail(currentTripId);
+  if (state.view === 'restaurant-stats') await renderRestaurantStats();
   if (state.view === 'vacations') await renderVacationScreen(currentVacationYear);
   if (state.view === 'readings-years') await renderReadingYears();
   if (state.view === 'readings-detail') { currentReadingYearKey = state.yearKey; await renderReadingsDetail(state.yearKey); }
@@ -2072,6 +2089,7 @@ async function renderTripDetail(tripId){
     document.getElementById('tripRegularSection').style.display = 'none';
     document.getElementById('restaurantesSection').style.display = 'block';
     populateRestAddFormCountrySelects();
+    updateRestaurantYearLabel();
     await renderRestaurantView(tripId);
     await renderRestaurantEditList(tripId);
   } else {
@@ -2204,10 +2222,17 @@ function populateRestAddFormCountrySelects(){
   document.getElementById('restProvinciaRow').style.display = 'block';
   document.getElementById('restComunidadRow').style.display = 'block';
 }
+function restaurantEntriesForYear(entries, year){
+  return entries.filter(r => (r.fecha || '').slice(0, 4) === String(year));
+}
+function updateRestaurantYearLabel(){
+  document.getElementById('restYearLabel').textContent = String(currentRestaurantYear);
+}
 async function renderRestaurantView(tripId){
-  const entries = sortRestaurantEntries(await dbGetAll('restaurantEntries', 'tripId', tripId));
+  const allEntries = sortRestaurantEntries(await dbGetAll('restaurantEntries', 'tripId', tripId));
+  const entries = restaurantEntriesForYear(allEntries, currentRestaurantYear);
   const container = document.getElementById('restaurantView');
-  if (entries.length === 0) { container.innerHTML = '<p class="help-text">Sin restaurantes añadidos todavía.</p>'; return; }
+  if (entries.length === 0) { container.innerHTML = `<p class="help-text">Sin restaurantes en ${currentRestaurantYear}. Usa las flechas de arriba para cambiar de año.</p>`; return; }
   container.innerHTML = entries.map(r => {
     let thumb = '';
     if (r.photoBlob) {
@@ -2239,7 +2264,8 @@ async function renderRestaurantView(tripId){
   }).join('');
 }
 async function renderRestaurantEditList(tripId){
-  const entries = sortRestaurantEntries(await dbGetAll('restaurantEntries', 'tripId', tripId));
+  const allEntries = sortRestaurantEntries(await dbGetAll('restaurantEntries', 'tripId', tripId));
+  const entries = restaurantEntriesForYear(allEntries, currentRestaurantYear);
   document.getElementById('restaurantEditList').innerHTML = entries.map(r => {
     let thumb = '';
     if (r.photoBlob) {
@@ -2276,6 +2302,65 @@ async function renderRestaurantEditList(tripId){
       </div>
     `;
   }).join('');
+}
+
+async function renderRestaurantStats(){
+  await ensureRestaurantesTrip();
+  const trips = await dbGetAll('trips');
+  const trip = trips.find(t => t.isDefault);
+  const container = document.getElementById('restaurantStatsBody');
+  if (!trip) { container.innerHTML = '<p class="help-text">Sin datos todavía.</p>'; return; }
+  const entries = await dbGetAll('restaurantEntries', 'tripId', trip.id);
+  if (entries.length === 0) { container.innerHTML = '<p class="help-text">Sin restaurantes añadidos todavía.</p>'; return; }
+
+  const byYear = {};
+  entries.forEach(r => {
+    const year = (r.fecha || '').slice(0, 4) || 'Sin fecha';
+    if (!byYear[year]) byYear[year] = { total: 0, count: 0, byMonth: {} };
+    byYear[year].total += Number(r.precio || 0);
+    byYear[year].count += 1;
+    if (r.fecha) {
+      const month = r.fecha.slice(5, 7);
+      byYear[year].byMonth[month] = (byYear[year].byMonth[month] || 0) + Number(r.precio || 0);
+    }
+  });
+
+  const yearKeys = Object.keys(byYear).sort((a, b) => {
+    if (a === 'Sin fecha') return 1;
+    if (b === 'Sin fecha') return -1;
+    return b.localeCompare(a);
+  });
+
+  const grandTotal = entries.reduce((s, r) => s + Number(r.precio || 0), 0);
+
+  container.innerHTML = `
+    <div class="tile" style="padding:14px; margin-bottom:12px;">
+      <div class="card-title">🍽 Total gastado</div>
+      <div class="card-muted" style="font-size:22px; color:var(--accent-ember);">${grandTotal.toFixed(2)} €</div>
+      <div class="card-muted">${entries.length} restaurante(s) en total</div>
+    </div>
+    ${yearKeys.map(y => {
+      const data = byYear[y];
+      const monthKeys = Object.keys(data.byMonth).sort((a, b) => a.localeCompare(b));
+      return `
+        <div class="card rest-stats-year-card" data-year="${y}" style="cursor:pointer;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span class="card-title">${y}</span>
+            <span class="card-title" style="color:var(--accent-ember);">${data.total.toFixed(2)} €</span>
+          </div>
+          <div class="card-muted">${data.count} restaurante(s)</div>
+          <div class="rest-stats-months" style="display:none; margin-top:8px;">
+            ${monthKeys.length ? monthKeys.map(m => `
+              <div class="card-muted" style="display:flex; justify-content:space-between;">
+                <span>${MONTH_NAMES[parseInt(m, 10) - 1]}</span>
+                <span>${data.byMonth[m].toFixed(2)} €</span>
+              </div>
+            `).join('') : '<div class="card-muted">Sin fechas registradas.</div>'}
+          </div>
+        </div>
+      `;
+    }).join('')}
+  `;
 }
 
 /* ---------- render: Vacaciones ---------- */
@@ -3931,6 +4016,25 @@ document.getElementById('btnToggleRestaurantEdit').addEventListener('click', () 
   document.getElementById('restaurantView').style.display = restaurantEditMode ? 'none' : 'block';
   document.getElementById('restaurantEdit').style.display = restaurantEditMode ? 'block' : 'none';
   document.getElementById('btnToggleRestaurantEdit').textContent = restaurantEditMode ? '✅ Cerrar edición' : '✏️ Modificar restaurantes';
+});
+document.getElementById('btnRestPrevYear').addEventListener('click', async () => {
+  currentRestaurantYear--;
+  updateRestaurantYearLabel();
+  await renderRestaurantView(currentTripId);
+  await renderRestaurantEditList(currentTripId);
+});
+document.getElementById('btnRestNextYear').addEventListener('click', async () => {
+  currentRestaurantYear++;
+  updateRestaurantYearLabel();
+  await renderRestaurantView(currentTripId);
+  await renderRestaurantEditList(currentTripId);
+});
+document.getElementById('btnRestaurantStats').addEventListener('click', () => go('restaurant-stats'));
+document.getElementById('restaurantStatsBody').addEventListener('click', (e) => {
+  const card = e.target.closest('.rest-stats-year-card');
+  if (!card) return;
+  const months = card.querySelector('.rest-stats-months');
+  if (months) months.style.display = months.style.display === 'none' ? 'block' : 'none';
 });
 
 /* ---------- eventos: Vacaciones ---------- */
