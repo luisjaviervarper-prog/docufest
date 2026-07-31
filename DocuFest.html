@@ -240,6 +240,7 @@
         <button class="btn-outline" id="btnReadings">📚 Lecturas</button>
         <button class="btn-outline" id="btnCar">🚗 Coche</button>
         <button class="btn-outline" id="btnWork">🛠 Trabajo</button>
+        <button class="btn-outline" id="btnAccounts">🏦 Cuentas</button>
         <button class="btn-outline" id="btnExportFullBackup">💾 Exportar todos los datos</button>
         <button class="btn-outline" id="btnImportFullBackup">📥 Importar datos</button>
         <input type="file" id="fullBackupImportInput" accept=".dfbackup,application/octet-stream,*/*" style="display:none">
@@ -836,6 +837,187 @@
     </div>
   </section>
 
+  <!-- ===================== CUENTAS: BLOQUEO PROPIO ===================== -->
+  <section id="screen-accounts-lock" class="screen">
+    <div class="center-column">
+      <h1 class="app-title" style="font-size:28px;">🏦 Cuentas</h1>
+
+      <div id="accountsLockSetup" style="width:100%; max-width:320px; display:none;">
+        <p class="help-text">Crea un PIN propio para proteger esta sección. Se pedirá cada vez que entres a Cuentas.</p>
+        <label class="field-label">Nuevo PIN (4-6 dígitos)</label>
+        <input type="password" id="accountsPinSetupInput" inputmode="numeric" maxlength="6" placeholder="••••">
+        <label class="field-label">Confirmar PIN</label>
+        <input type="password" id="accountsPinSetupConfirm" inputmode="numeric" maxlength="6" placeholder="••••">
+        <div class="help-text" id="accountsPinSetupError" style="color:var(--state-error);"></div>
+        <button class="btn-ember" id="btnAccountsSavePin">Guardar PIN</button>
+      </div>
+
+      <div id="accountsLockUnlock" style="width:100%; max-width:320px; display:none;">
+        <p class="help-text">Introduce tu PIN de Cuentas para continuar.</p>
+        <input type="password" id="accountsPinUnlockInput" inputmode="numeric" maxlength="6" placeholder="••••">
+        <div class="help-text" id="accountsPinUnlockError" style="color:var(--state-error);"></div>
+        <button class="btn-ember" id="btnAccountsUnlockPin">Desbloquear</button>
+        <button class="btn-outline" id="btnAccountsBiometricUnlock" style="display:none;">🔓 Usar huella / rostro</button>
+        <button class="btn-outline" id="btnAccountsLockCancel">← Volver</button>
+      </div>
+
+      <div id="accountsBiometricOffer" style="width:100%; max-width:320px; display:none;">
+        <p class="help-text">¿Quieres activar el desbloqueo con huella o rostro para Cuentas y no escribir el PIN cada vez?</p>
+        <button class="btn-ember" id="btnAccountsEnableBiometric">Activar huella / rostro</button>
+        <button class="btn-outline" id="btnAccountsSkipBiometric">Ahora no</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== CUENTAS: INICIO ===================== -->
+  <section id="screen-accounts-home" class="screen">
+    <div class="topbar">
+      <button class="icon-btn" id="btnAccountsHomeBack">←</button>
+      <h1>🏦 Cuentas</h1>
+    </div>
+    <div class="content">
+      <button class="btn-outline" id="btnGoStocks">📈 Acciones</button>
+    </div>
+  </section>
+
+  <!-- ===================== ACCIONES: INICIO ===================== -->
+  <section id="screen-stocks-home" class="screen">
+    <div class="topbar">
+      <button class="icon-btn" onclick="history.back()">←</button>
+      <h1>📈 Acciones</h1>
+    </div>
+    <div class="content">
+      <button class="btn-outline" id="btnGoStocksHeld">🟢 Nuevas acciones</button>
+      <button class="btn-outline" id="btnGoStocksSold">🔴 Acciones vendidas</button>
+      <button class="btn-outline" id="btnGoDividends">💶 Dividendos</button>
+      <button class="btn-outline" id="btnGoExpenses">🧾 Gastos mantenimiento cuenta</button>
+      <button class="btn-outline" id="btnGoResults">📊 Resultados</button>
+      <button class="btn-outline" id="btnGoBanks">🏛 Banco</button>
+    </div>
+  </section>
+
+  <!-- ===================== ACCIONES: NUEVAS ACCIONES (EN CARTERA) ===================== -->
+  <section id="screen-stocks-held" class="screen">
+    <div class="topbar">
+      <button class="icon-btn" onclick="history.back()">←</button>
+      <h1>🟢 Nuevas acciones</h1>
+    </div>
+    <div class="content">
+      <div id="stocksHeldView"></div>
+      <div id="stocksHeldEdit" style="display:none;">
+        <div class="tile" style="padding:14px;">
+          <label class="field-label">Nombre de la acción</label>
+          <input type="text" id="stockNombre" list="stockNombresDatalist" placeholder="Ej. BBVA">
+          <datalist id="stockNombresDatalist"></datalist>
+          <label class="field-label">Banco</label>
+          <select id="stockBanco"></select>
+          <label class="field-label">Fecha de compra</label>
+          <input type="date" id="stockFechaCompra">
+          <label class="field-label">Fecha de venta</label>
+          <input type="date" id="stockFechaVenta">
+          <label class="field-label">Precio de compra (€/acción)</label>
+          <input type="number" step="0.0001" id="stockPrecioCompra" placeholder="Ej. 8.25">
+          <label class="field-label">Nº de acciones</label>
+          <input type="number" step="1" id="stockNumAcciones" placeholder="Ej. 500">
+          <label class="field-label">Precio de venta (€/acción)</label>
+          <input type="number" step="0.0001" id="stockPrecioVenta" placeholder="Solo si ya la has vendido">
+          <button class="btn-ember" id="btnAddStock" style="margin-top:4px;">＋ Añadir acción</button>
+        </div>
+        <div id="stocksHeldEditList"></div>
+      </div>
+      <button class="btn-outline" id="btnToggleStocksHeldEdit">✏️ Modificar</button>
+    </div>
+  </section>
+
+  <!-- ===================== ACCIONES: ACCIONES VENDIDAS ===================== -->
+  <section id="screen-stocks-sold" class="screen">
+    <div class="topbar">
+      <button class="icon-btn" onclick="history.back()">←</button>
+      <h1>🔴 Acciones vendidas</h1>
+    </div>
+    <div class="content">
+      <div id="stocksSoldView"></div>
+      <div id="stocksSoldEdit" style="display:none;">
+        <div id="stocksSoldEditList"></div>
+      </div>
+      <button class="btn-outline" id="btnToggleStocksSoldEdit">✏️ Modificar</button>
+    </div>
+  </section>
+
+  <!-- ===================== ACCIONES: DIVIDENDOS ===================== -->
+  <section id="screen-stocks-dividends" class="screen">
+    <div class="topbar">
+      <button class="icon-btn" onclick="history.back()">←</button>
+      <h1>💶 Dividendos</h1>
+    </div>
+    <div class="content">
+      <div id="dividendsView"></div>
+      <div id="dividendsEdit" style="display:none;">
+        <div class="tile" style="padding:14px;">
+          <label class="field-label">Total dividendo (€)</label>
+          <input type="number" step="0.01" id="dividendTotal" placeholder="Ej. 150.00">
+          <label class="field-label">Fecha</label>
+          <input type="date" id="dividendFecha">
+          <label class="field-label">Acciones asociadas (sin vender)</label>
+          <select id="dividendStocks" multiple size="6"></select>
+          <p class="help-text">Selecciona una o varias. El total se reparte entre ellas según su nº de acciones.</p>
+          <button class="btn-ember" id="btnAddDividend" style="margin-top:4px;">＋ Añadir dividendo</button>
+        </div>
+        <div id="dividendsEditList"></div>
+      </div>
+      <button class="btn-outline" id="btnToggleDividendsEdit">✏️ Modificar</button>
+    </div>
+  </section>
+
+  <!-- ===================== ACCIONES: GASTOS MANTENIMIENTO ===================== -->
+  <section id="screen-stocks-expenses" class="screen">
+    <div class="topbar">
+      <button class="icon-btn" onclick="history.back()">←</button>
+      <h1>🧾 Gastos mantenimiento</h1>
+    </div>
+    <div class="content">
+      <div id="expensesStockView"></div>
+      <div id="expensesStockEdit" style="display:none;">
+        <div class="tile" style="padding:14px;">
+          <label class="field-label">Fecha</label>
+          <input type="date" id="stockExpenseFecha">
+          <label class="field-label">Gasto (€)</label>
+          <input type="number" step="0.01" id="stockExpenseGasto" placeholder="Ej. 12.50">
+          <label class="field-label">Banco</label>
+          <select id="stockExpenseBanco"></select>
+          <button class="btn-ember" id="btnAddStockExpense" style="margin-top:4px;">＋ Añadir gasto</button>
+        </div>
+        <div id="expensesStockEditList"></div>
+      </div>
+      <button class="btn-outline" id="btnToggleStockExpensesEdit">✏️ Modificar</button>
+    </div>
+  </section>
+
+  <!-- ===================== ACCIONES: RESULTADOS ===================== -->
+  <section id="screen-stocks-results" class="screen">
+    <div class="topbar">
+      <button class="icon-btn" onclick="history.back()">←</button>
+      <h1>📊 Resultados</h1>
+    </div>
+    <div class="content" id="stocksResultsBody"></div>
+  </section>
+
+  <!-- ===================== ACCIONES: BANCOS ===================== -->
+  <section id="screen-stocks-banks" class="screen">
+    <div class="topbar">
+      <button class="icon-btn" onclick="history.back()">←</button>
+      <h1>🏛 Bancos</h1>
+    </div>
+    <div class="content">
+      <div id="stockBanksView"></div>
+      <div class="tile" style="padding:14px;">
+        <label class="field-label">Nuevo banco</label>
+        <input type="text" id="stockBankNombre" placeholder="Ej. ING">
+        <button class="btn-ember" id="btnAddStockBank" style="margin-top:4px;">＋ Añadir banco</button>
+      </div>
+    </div>
+  </section>
+
   <!-- ===================== MODAL: VISOR DE DOCUMENTO ===================== -->
   <div class="modal-overlay" id="modalViewer">
     <div class="modal-sheet">
@@ -883,7 +1065,7 @@
 /* ---------- IndexedDB helpers ---------- */
 function openDb(){
   return new Promise((resolve, reject) => {
-    const req = indexedDB.open('docufest_db', 11);
+    const req = indexedDB.open('docufest_db', 12);
     req.onupgradeneeded = (e) => {
       const db = e.target.result;
       if (!db.objectStoreNames.contains('profiles')) {
@@ -966,6 +1148,18 @@ function openDb(){
       if (!db.objectStoreNames.contains('workObservaciones')) {
         const s = db.createObjectStore('workObservaciones', { keyPath: 'id' });
         s.createIndex('conceptoId', 'conceptoId', { unique: false });
+      }
+      if (!db.objectStoreNames.contains('stockBanks')) {
+        db.createObjectStore('stockBanks', { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains('stockShares')) {
+        db.createObjectStore('stockShares', { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains('stockDividends')) {
+        db.createObjectStore('stockDividends', { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains('stockMaintenanceExpenses')) {
+        db.createObjectStore('stockMaintenanceExpenses', { keyPath: 'id' });
       }
     };
     req.onsuccess = () => resolve(req.result);
@@ -1824,6 +2018,11 @@ let currentObraId = null;
 let currentConceptoId = null;
 let workObrasEditMode = false;
 let workConceptosEditMode = false;
+let accountsUnlockedThisVisit = false;
+let stocksHeldEditMode = false;
+let stocksSoldEditMode = false;
+let dividendsEditMode = false;
+let stockExpensesEditMode = false;
 
 function go(view, params = {}){
   const state = { view, ...params };
@@ -1862,6 +2061,15 @@ async function applyState(state){
   if (state.view === 'work-home') await renderWorkObrasScreen();
   if (state.view === 'work-obra-detail') await renderWorkObraDetail(currentObraId);
   if (state.view === 'work-concepto-detail') await renderWorkConceptoDetail(currentConceptoId);
+  if (state.view === 'accounts-lock') await bootAccountsLockScreen();
+  if (state.view === 'accounts-home') { /* nada que renderizar */ }
+  if (state.view === 'stocks-home') { /* nada que renderizar */ }
+  if (state.view === 'stocks-held') await renderStocksHeldScreen();
+  if (state.view === 'stocks-sold') await renderStocksSoldScreen();
+  if (state.view === 'stocks-dividends') await renderDividendsScreen();
+  if (state.view === 'stocks-expenses') await renderStockExpensesScreen();
+  if (state.view === 'stocks-results') await renderStocksResults();
+  if (state.view === 'stocks-banks') await renderStockBanksScreen();
 }
 
 /* ---------- render: bienvenida ---------- */
@@ -3111,6 +3319,471 @@ async function renderWorkConceptoDetail(conceptoId){
   document.getElementById('workConceptoDetailTitle').textContent = concepto ? (concepto.concepto || 'Concepto') : 'Concepto';
   document.getElementById('workObservacionTexto').value = '';
   await renderWorkObservacionesList(conceptoId);
+}
+
+/* ======================================================================
+   CUENTAS: bloqueo propio (PIN + huella/rostro), independiente del
+   bloqueo general de la app. Se guarda con sus propias claves y se pide
+   SIEMPRE que se entra en la sección, aunque la app ya esté desbloqueada.
+   ====================================================================== */
+const ACC_PIN_SALT_KEY = 'docufest_accounts_pin_salt';
+const ACC_PIN_HASH_KEY = 'docufest_accounts_pin_hash';
+const ACC_WEBAUTHN_CRED_KEY = 'docufest_accounts_webauthn_cred_id';
+
+function hasAccountsPinConfigured(){ return !!localStorage.getItem(ACC_PIN_HASH_KEY); }
+async function saveAccountsPin(pin){
+  const salt = randomBytes(16);
+  const hash = await hashPin(pin, salt);
+  localStorage.setItem(ACC_PIN_SALT_KEY, bytesToHex(salt));
+  localStorage.setItem(ACC_PIN_HASH_KEY, hash);
+}
+async function verifyAccountsPin(pin){
+  const saltHex = localStorage.getItem(ACC_PIN_SALT_KEY);
+  if (!saltHex) return false;
+  const hash = await hashPin(pin, hexToBytes(saltHex));
+  return hash === localStorage.getItem(ACC_PIN_HASH_KEY);
+}
+function hasAccountsBiometricConfigured(){ return !!localStorage.getItem(ACC_WEBAUTHN_CRED_KEY); }
+async function registerAccountsBiometric(){
+  const credential = await navigator.credentials.create({
+    publicKey: {
+      challenge: randomBytes(32),
+      rp: { name: 'DocuFest Cuentas' },
+      user: { id: randomBytes(16), name: 'docufest-cuentas-local', displayName: 'DocuFest Cuentas' },
+      pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
+      authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'required' },
+      timeout: 60000
+    }
+  });
+  localStorage.setItem(ACC_WEBAUTHN_CRED_KEY, bytesToB64url(new Uint8Array(credential.rawId)));
+}
+async function unlockAccountsWithBiometric(){
+  const credIdB64 = localStorage.getItem(ACC_WEBAUTHN_CRED_KEY);
+  if (!credIdB64) return false;
+  try {
+    await navigator.credentials.get({
+      publicKey: {
+        challenge: randomBytes(32),
+        allowCredentials: [{ id: b64urlToBytes(credIdB64), type: 'public-key' }],
+        userVerification: 'required',
+        timeout: 60000
+      }
+    });
+    return true;
+  } catch (e) {
+    console.warn('Biometría de Cuentas cancelada o fallida', e);
+    return false;
+  }
+}
+function showAccountsLockSubview(name){
+  document.getElementById('accountsLockSetup').style.display = name === 'setup' ? 'block' : 'none';
+  document.getElementById('accountsLockUnlock').style.display = name === 'unlock' ? 'block' : 'none';
+  document.getElementById('accountsBiometricOffer').style.display = name === 'offer' ? 'block' : 'none';
+}
+async function bootAccountsLockScreen(){
+  if (!hasAccountsPinConfigured()) { showAccountsLockSubview('setup'); return; }
+  showAccountsLockSubview('unlock');
+  document.getElementById('accountsPinUnlockInput').value = '';
+  document.getElementById('accountsPinUnlockError').textContent = '';
+  const showBiometricBtn = hasAccountsBiometricConfigured() && await isPlatformAuthenticatorAvailable();
+  document.getElementById('btnAccountsBiometricUnlock').style.display = showBiometricBtn ? 'block' : 'none';
+}
+function enterAccountsHome(){
+  accountsUnlockedThisVisit = true;
+  go('accounts-home');
+}
+
+/* ---------- Acciones: Bancos ---------- */
+async function ensureDefaultStockBanks(){
+  const banks = await dbGetAll('stockBanks');
+  if (banks.length > 0) return;
+  for (const nombre of ['BBVA', 'Abanca', 'Santander']) {
+    await dbPut('stockBanks', { id: uuid(), nombre });
+  }
+}
+async function getStockBanksSorted(){
+  const banks = await dbGetAll('stockBanks');
+  banks.sort((a, b) => a.nombre.localeCompare(b.nombre));
+  return banks;
+}
+function bankOptionsHtml(banks, selectedId){
+  return banks.map(b => `<option value="${b.id}" ${b.id === selectedId ? 'selected' : ''}>${escapeHtml(b.nombre)}</option>`).join('');
+}
+async function renderStockBanksView(){
+  const banks = await getStockBanksSorted();
+  const container = document.getElementById('stockBanksView');
+  if (banks.length === 0) { container.innerHTML = '<p class="help-text">Sin bancos todavía.</p>'; return; }
+  container.innerHTML = banks.map(b => `
+    <div class="card" style="cursor:default;">
+      <button class="icon-btn danger" data-action="delete-stock-bank" data-id="${b.id}">✕</button>
+      <span class="card-title">🏛 ${escapeHtml(b.nombre)}</span>
+    </div>
+  `).join('');
+}
+async function renderStockBanksScreen(){
+  await ensureDefaultStockBanks();
+  await renderStockBanksView();
+}
+
+/* ---------- Acciones: helpers de cálculo ---------- */
+async function getStockNamesDatalist(){
+  const stocks = await dbGetAll('stockShares');
+  return [...new Set(stocks.map(s => s.nombre).filter(Boolean))].sort();
+}
+async function populateStockAddFormSelects(){
+  const banks = await getStockBanksSorted();
+  document.getElementById('stockBanco').innerHTML = bankOptionsHtml(banks, '');
+  document.getElementById('stockNombresDatalist').innerHTML = (await getStockNamesDatalist()).map(n => `<option value="${escapeHtml(n)}">`).join('');
+}
+function isStockSold(stock){ return !!(stock.fechaVenta && stock.fechaVenta.length > 0); }
+/* Reparte un importe total entre varios stockIds de forma proporcional a su
+   nº de acciones, ajustando el redondeo en el último elemento para que la
+   suma cuadre exactamente con el total. */
+function splitProportionally(total, stocks){
+  const sumAcciones = stocks.reduce((s, st) => s + Number(st.numAcciones || 0), 0);
+  if (sumAcciones <= 0) return [];
+  let assigned = 0;
+  const out = [];
+  stocks.forEach((st, i) => {
+    let amount;
+    if (i === stocks.length - 1) amount = Math.round((total - assigned) * 100) / 100;
+    else amount = Math.round((total * (Number(st.numAcciones || 0) / sumAcciones)) * 100) / 100;
+    assigned += amount;
+    out.push({ stockId: st.id, amount });
+  });
+  return out;
+}
+async function buildStockFinancialsMap(){
+  const dividends = await dbGetAll('stockDividends');
+  const expenses = await dbGetAll('stockMaintenanceExpenses');
+  const map = {};
+  const add = (stockId, field, amount) => {
+    if (!map[stockId]) map[stockId] = { divTotal: 0, expTotal: 0 };
+    map[stockId][field] += amount;
+  };
+  dividends.forEach(d => (d.allocations || []).forEach(a => add(a.stockId, 'divTotal', a.amount)));
+  expenses.forEach(g => (g.allocations || []).forEach(a => add(a.stockId, 'expTotal', a.amount)));
+  return map;
+}
+function stockCardHtml(s, fin, bankMap){
+  const sold = isStockSold(s);
+  const divTotal = fin.divTotal || 0;
+  const expTotal = fin.expTotal || 0;
+  const beneficioVenta = sold ? (Number(s.precioVenta || 0) - Number(s.precioCompra || 0)) * Number(s.numAcciones || 0) : null;
+  const beneficioTotal = (beneficioVenta || 0) + divTotal - expTotal;
+  return `
+    <div class="card" data-id="${s.id}" style="cursor:default;">
+      <span class="card-title">${escapeHtml(s.nombre || '')}</span>
+      <div class="card-muted">${bankMap[s.banco] ? '🏛 ' + escapeHtml(bankMap[s.banco]) : ''}</div>
+      <div class="card-muted">Compra: ${s.fechaCompra ? escapeHtml(formatDateRange(s.fechaCompra, s.fechaCompra)) : '—'} · ${Number(s.precioCompra || 0).toFixed(4)} €/acc · ${s.numAcciones || 0} acc.</div>
+      ${sold ? `<div class="card-muted">Venta: ${escapeHtml(formatDateRange(s.fechaVenta, s.fechaVenta))} · ${Number(s.precioVenta || 0).toFixed(4)} €/acc</div>` : '<div class="card-muted">Sin vender todavía</div>'}
+      <div class="card-muted">Beneficio venta: ${sold ? beneficioVenta.toFixed(2) + ' €' : '—'}</div>
+      <div class="card-muted">Beneficio dividendos: ${divTotal.toFixed(2)} €</div>
+      <div class="card-muted">Gastos mantenimiento asociados: ${expTotal.toFixed(2)} €</div>
+      <div class="card-muted" style="color:var(--accent-brass); font-weight:700;">Beneficio total: ${beneficioTotal.toFixed(2)} €</div>
+    </div>
+  `;
+}
+async function getBankMap(){
+  const banks = await getStockBanksSorted();
+  const map = {};
+  banks.forEach(b => map[b.id] = b.nombre);
+  return map;
+}
+
+/* ---------- Acciones: Nuevas acciones (en cartera) ---------- */
+async function addStock(data){
+  const entry = { id: uuid(), ...data, createdAt: Date.now() };
+  await dbPut('stockShares', entry);
+  return entry;
+}
+async function updateStock(entry){ await dbPut('stockShares', entry); }
+async function deleteStockCascade(id){
+  const dividends = await dbGetAll('stockDividends');
+  for (const d of dividends) {
+    if ((d.allocations || []).some(a => a.stockId === id)) {
+      d.allocations = d.allocations.filter(a => a.stockId !== id);
+      await dbPut('stockDividends', d);
+    }
+  }
+  const expenses = await dbGetAll('stockMaintenanceExpenses');
+  for (const g of expenses) {
+    if ((g.allocations || []).some(a => a.stockId === id)) {
+      g.allocations = g.allocations.filter(a => a.stockId !== id);
+      await dbPut('stockMaintenanceExpenses', g);
+    }
+  }
+  await dbDelete('stockShares', id);
+}
+async function renderStocksHeldView(){
+  const all = await dbGetAll('stockShares');
+  const held = all.filter(s => !isStockSold(s));
+  held.sort((a, b) => (a.fechaCompra || '').localeCompare(b.fechaCompra || ''));
+  const container = document.getElementById('stocksHeldView');
+  if (held.length === 0) { container.innerHTML = '<p class="help-text">Sin acciones en cartera todavía.</p>'; return; }
+  const finMap = await buildStockFinancialsMap();
+  const bankMap = await getBankMap();
+  container.innerHTML = held.map(s => stockCardHtml(s, finMap[s.id] || {}, bankMap)).join('');
+}
+async function renderStocksHeldEditList(){
+  const all = await dbGetAll('stockShares');
+  const held = all.filter(s => !isStockSold(s));
+  held.sort((a, b) => (a.fechaCompra || '').localeCompare(b.fechaCompra || ''));
+  const banks = await getStockBanksSorted();
+  document.getElementById('stocksHeldEditList').innerHTML = held.map(s => `
+    <div class="card" data-id="${s.id}" style="cursor:default;">
+      <button class="icon-btn danger" data-action="delete-stock" data-id="${s.id}">✕</button>
+      <label class="field-label">Nombre</label>
+      <input type="text" class="stock-input" data-field="nombre" data-id="${s.id}" list="stockNombresDatalist" value="${escapeHtml(s.nombre || '')}">
+      <label class="field-label">Banco</label>
+      <select class="stock-input" data-field="banco" data-id="${s.id}">${bankOptionsHtml(banks, s.banco || '')}</select>
+      <label class="field-label">Fecha de compra</label>
+      <input type="date" class="stock-input" data-field="fechaCompra" data-id="${s.id}" value="${s.fechaCompra || ''}">
+      <label class="field-label">Fecha de venta</label>
+      <input type="date" class="stock-input" data-field="fechaVenta" data-id="${s.id}" value="${s.fechaVenta || ''}">
+      <label class="field-label">Precio de compra (€/acción)</label>
+      <input type="number" step="0.0001" class="stock-input" data-field="precioCompra" data-id="${s.id}" value="${s.precioCompra || ''}">
+      <label class="field-label">Nº de acciones</label>
+      <input type="number" step="1" class="stock-input" data-field="numAcciones" data-id="${s.id}" value="${s.numAcciones || ''}">
+      <label class="field-label">Precio de venta (€/acción)</label>
+      <input type="number" step="0.0001" class="stock-input" data-field="precioVenta" data-id="${s.id}" value="${s.precioVenta || ''}">
+    </div>
+  `).join('');
+}
+async function renderStocksHeldScreen(){
+  stocksHeldEditMode = false;
+  document.getElementById('stocksHeldView').style.display = 'block';
+  document.getElementById('stocksHeldEdit').style.display = 'none';
+  document.getElementById('btnToggleStocksHeldEdit').textContent = '✏️ Modificar';
+  await ensureDefaultStockBanks();
+  await populateStockAddFormSelects();
+  document.getElementById('stockFechaCompra').value = '';
+  document.getElementById('stockFechaVenta').value = '';
+  document.getElementById('stockNombre').value = '';
+  document.getElementById('stockPrecioCompra').value = '';
+  document.getElementById('stockNumAcciones').value = '';
+  document.getElementById('stockPrecioVenta').value = '';
+  await renderStocksHeldView();
+  await renderStocksHeldEditList();
+}
+
+/* ---------- Acciones: Acciones vendidas ---------- */
+async function renderStocksSoldView(){
+  const all = await dbGetAll('stockShares');
+  const sold = all.filter(isStockSold);
+  sold.sort((a, b) => (b.fechaVenta || '').localeCompare(a.fechaVenta || ''));
+  const container = document.getElementById('stocksSoldView');
+  if (sold.length === 0) { container.innerHTML = '<p class="help-text">Sin acciones vendidas todavía.</p>'; return; }
+  const finMap = await buildStockFinancialsMap();
+  const bankMap = await getBankMap();
+  container.innerHTML = sold.map(s => stockCardHtml(s, finMap[s.id] || {}, bankMap)).join('');
+}
+async function renderStocksSoldEditList(){
+  const all = await dbGetAll('stockShares');
+  const sold = all.filter(isStockSold);
+  sold.sort((a, b) => (b.fechaVenta || '').localeCompare(a.fechaVenta || ''));
+  const banks = await getStockBanksSorted();
+  document.getElementById('stocksSoldEditList').innerHTML = sold.map(s => `
+    <div class="card" data-id="${s.id}" style="cursor:default;">
+      <button class="icon-btn danger" data-action="delete-stock" data-id="${s.id}">✕</button>
+      <label class="field-label">Nombre</label>
+      <input type="text" class="stock-input" data-field="nombre" data-id="${s.id}" list="stockNombresDatalist" value="${escapeHtml(s.nombre || '')}">
+      <label class="field-label">Banco</label>
+      <select class="stock-input" data-field="banco" data-id="${s.id}">${bankOptionsHtml(banks, s.banco || '')}</select>
+      <label class="field-label">Fecha de compra</label>
+      <input type="date" class="stock-input" data-field="fechaCompra" data-id="${s.id}" value="${s.fechaCompra || ''}">
+      <label class="field-label">Fecha de venta</label>
+      <input type="date" class="stock-input" data-field="fechaVenta" data-id="${s.id}" value="${s.fechaVenta || ''}">
+      <label class="field-label">Precio de compra (€/acción)</label>
+      <input type="number" step="0.0001" class="stock-input" data-field="precioCompra" data-id="${s.id}" value="${s.precioCompra || ''}">
+      <label class="field-label">Nº de acciones</label>
+      <input type="number" step="1" class="stock-input" data-field="numAcciones" data-id="${s.id}" value="${s.numAcciones || ''}">
+      <label class="field-label">Precio de venta (€/acción)</label>
+      <input type="number" step="0.0001" class="stock-input" data-field="precioVenta" data-id="${s.id}" value="${s.precioVenta || ''}">
+    </div>
+  `).join('');
+}
+async function renderStocksSoldScreen(){
+  stocksSoldEditMode = false;
+  document.getElementById('stocksSoldView').style.display = 'block';
+  document.getElementById('stocksSoldEdit').style.display = 'none';
+  document.getElementById('btnToggleStocksSoldEdit').textContent = '✏️ Modificar';
+  await renderStocksSoldView();
+  await renderStocksSoldEditList();
+}
+
+/* ---------- Acciones: Dividendos ---------- */
+async function populateDividendStockSelect(){
+  const all = await dbGetAll('stockShares');
+  const held = all.filter(s => !isStockSold(s));
+  const bankMap = await getBankMap();
+  document.getElementById('dividendStocks').innerHTML = held.map(s => `
+    <option value="${s.id}">${escapeHtml(s.nombre || '')} · ${s.numAcciones || 0} acc. · ${bankMap[s.banco] || 'sin banco'}</option>
+  `).join('');
+}
+async function addDividend(total, fecha, stockIds){
+  const all = await dbGetAll('stockShares');
+  const selected = all.filter(s => stockIds.includes(s.id));
+  const allocations = splitProportionally(total, selected);
+  const entry = { id: uuid(), total, fecha, allocations, createdAt: Date.now() };
+  await dbPut('stockDividends', entry);
+  return entry;
+}
+async function renderDividendsView(){
+  const dividends = await dbGetAll('stockDividends');
+  dividends.sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
+  const container = document.getElementById('dividendsView');
+  if (dividends.length === 0) { container.innerHTML = '<p class="help-text">Sin dividendos añadidos todavía.</p>'; return; }
+  const stocks = await dbGetAll('stockShares');
+  const stockMap = {};
+  stocks.forEach(s => stockMap[s.id] = s);
+  container.innerHTML = dividends.map(d => `
+    <div class="card" style="cursor:default;">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <span class="card-title">${d.fecha ? escapeHtml(formatDateRange(d.fecha, d.fecha)) : '—'}</span>
+        <span class="card-title" style="color:var(--accent-ember);">${Number(d.total || 0).toFixed(2)} €</span>
+      </div>
+      ${(d.allocations || []).map(a => `<div class="card-muted">${stockMap[a.stockId] ? escapeHtml(stockMap[a.stockId].nombre) : 'Acción eliminada'}: ${a.amount.toFixed(2)} €</div>`).join('')}
+    </div>
+  `).join('');
+}
+async function renderDividendsEditList(){
+  const dividends = await dbGetAll('stockDividends');
+  dividends.sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
+  document.getElementById('dividendsEditList').innerHTML = dividends.map(d => `
+    <div class="card" data-id="${d.id}" style="cursor:default;">
+      <button class="icon-btn danger" data-action="delete-dividend" data-id="${d.id}">✕</button>
+      <label class="field-label">Fecha</label>
+      <input type="date" class="dividend-input" data-field="fecha" data-id="${d.id}" value="${d.fecha || ''}">
+      <label class="field-label">Total (€)</label>
+      <input type="number" step="0.01" class="dividend-input" data-field="total" data-id="${d.id}" value="${d.total || ''}">
+      <p class="help-text">Si cambias el total, se vuelve a repartir entre las mismas acciones asociadas.</p>
+    </div>
+  `).join('');
+}
+async function renderDividendsScreen(){
+  dividendsEditMode = false;
+  document.getElementById('dividendsView').style.display = 'block';
+  document.getElementById('dividendsEdit').style.display = 'none';
+  document.getElementById('btnToggleDividendsEdit').textContent = '✏️ Modificar';
+  document.getElementById('dividendTotal').value = '';
+  document.getElementById('dividendFecha').value = '';
+  await populateDividendStockSelect();
+  await renderDividendsView();
+  await renderDividendsEditList();
+}
+
+/* ---------- Acciones: Gastos mantenimiento cuenta ---------- */
+async function addStockExpense(fecha, gasto, bancoId){
+  const all = await dbGetAll('stockShares');
+  const eligible = all.filter(s => !isStockSold(s) && s.banco === bancoId);
+  const allocations = splitProportionally(gasto, eligible);
+  const entry = { id: uuid(), fecha, gasto, banco: bancoId, allocations, createdAt: Date.now() };
+  await dbPut('stockMaintenanceExpenses', entry);
+  return entry;
+}
+async function renderStockExpensesView(){
+  const expenses = await dbGetAll('stockMaintenanceExpenses');
+  expenses.sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
+  const container = document.getElementById('expensesStockView');
+  if (expenses.length === 0) { container.innerHTML = '<p class="help-text">Sin gastos añadidos todavía.</p>'; return; }
+  const bankMap = await getBankMap();
+  const stocks = await dbGetAll('stockShares');
+  const stockMap = {};
+  stocks.forEach(s => stockMap[s.id] = s);
+  container.innerHTML = expenses.map(g => `
+    <div class="card" style="cursor:default;">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <span class="card-title">${g.fecha ? escapeHtml(formatDateRange(g.fecha, g.fecha)) : '—'} · ${bankMap[g.banco] ? escapeHtml(bankMap[g.banco]) : '—'}</span>
+        <span class="card-title" style="color:var(--accent-crimson);">${Number(g.gasto || 0).toFixed(2)} €</span>
+      </div>
+      ${(g.allocations || []).length ? (g.allocations || []).map(a => `<div class="card-muted">${stockMap[a.stockId] ? escapeHtml(stockMap[a.stockId].nombre) : 'Acción eliminada'}: ${a.amount.toFixed(2)} €</div>`).join('') : '<div class="card-muted">Sin acciones sin vender en ese banco para repartir el gasto.</div>'}
+    </div>
+  `).join('');
+}
+async function renderStockExpensesEditList(){
+  const expenses = await dbGetAll('stockMaintenanceExpenses');
+  expenses.sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
+  const banks = await getStockBanksSorted();
+  document.getElementById('expensesStockEditList').innerHTML = expenses.map(g => `
+    <div class="card" data-id="${g.id}" style="cursor:default;">
+      <button class="icon-btn danger" data-action="delete-stock-expense" data-id="${g.id}">✕</button>
+      <label class="field-label">Fecha</label>
+      <input type="date" class="stock-expense-input" data-field="fecha" data-id="${g.id}" value="${g.fecha || ''}">
+      <label class="field-label">Gasto (€)</label>
+      <input type="number" step="0.01" class="stock-expense-input" data-field="gasto" data-id="${g.id}" value="${g.gasto || ''}">
+      <label class="field-label">Banco</label>
+      <select disabled>${bankOptionsHtml(banks, g.banco || '')}</select>
+      <p class="help-text">Si cambias el gasto, se vuelve a repartir entre las mismas acciones. Para cambiar de banco, elimina y crea uno nuevo.</p>
+    </div>
+  `).join('');
+}
+async function renderStockExpensesScreen(){
+  stockExpensesEditMode = false;
+  document.getElementById('expensesStockView').style.display = 'block';
+  document.getElementById('expensesStockEdit').style.display = 'none';
+  document.getElementById('btnToggleStockExpensesEdit').textContent = '✏️ Modificar';
+  document.getElementById('stockExpenseFecha').value = '';
+  document.getElementById('stockExpenseGasto').value = '';
+  await ensureDefaultStockBanks();
+  const banks = await getStockBanksSorted();
+  document.getElementById('stockExpenseBanco').innerHTML = bankOptionsHtml(banks, '');
+  await renderStockExpensesView();
+  await renderStockExpensesEditList();
+}
+
+/* ---------- Acciones: Resultados ---------- */
+async function renderStocksResults(){
+  const stocks = await dbGetAll('stockShares');
+  const finMap = await buildStockFinancialsMap();
+  const container = document.getElementById('stocksResultsBody');
+  if (stocks.length === 0) { container.innerHTML = '<p class="help-text">Sin acciones añadidas todavía.</p>'; return; }
+
+  let totalInvertido = 0, totalBeneficioVenta = 0, totalDividendos = 0, totalGastos = 0;
+  const byNombre = {};
+  stocks.forEach(s => {
+    const fin = finMap[s.id] || {};
+    const invertido = Number(s.precioCompra || 0) * Number(s.numAcciones || 0);
+    const sold = isStockSold(s);
+    const beneficioVenta = sold ? (Number(s.precioVenta || 0) - Number(s.precioCompra || 0)) * Number(s.numAcciones || 0) : 0;
+    totalInvertido += invertido;
+    totalBeneficioVenta += beneficioVenta;
+    totalDividendos += fin.divTotal || 0;
+    totalGastos += fin.expTotal || 0;
+    const key = s.nombre || 'Sin nombre';
+    if (!byNombre[key]) byNombre[key] = { beneficioVenta: 0, dividendos: 0, gastos: 0 };
+    byNombre[key].beneficioVenta += beneficioVenta;
+    byNombre[key].dividendos += fin.divTotal || 0;
+    byNombre[key].gastos += fin.expTotal || 0;
+  });
+  const beneficioTotalGlobal = totalBeneficioVenta + totalDividendos - totalGastos;
+
+  const nombreKeys = Object.keys(byNombre).sort();
+
+  container.innerHTML = `
+    <div class="tile" style="padding:14px; margin-bottom:12px;">
+      <div class="card-title">💼 Resumen global</div>
+      <div class="card-muted">Total invertido (compras): ${totalInvertido.toFixed(2)} €</div>
+      <div class="card-muted">Beneficio venta: ${totalBeneficioVenta.toFixed(2)} €</div>
+      <div class="card-muted">Beneficio dividendos: ${totalDividendos.toFixed(2)} €</div>
+      <div class="card-muted">Gastos mantenimiento: ${totalGastos.toFixed(2)} €</div>
+      <div class="card-title" style="color:var(--accent-brass); margin-top:6px;">Beneficio total: ${beneficioTotalGlobal.toFixed(2)} €</div>
+    </div>
+    <div class="section-title">Por acción</div>
+    ${nombreKeys.map(k => {
+      const d = byNombre[k];
+      const total = d.beneficioVenta + d.dividendos - d.gastos;
+      return `
+        <div class="card" style="cursor:default;">
+          <span class="card-title">${escapeHtml(k)}</span>
+          <div class="card-muted">Beneficio venta: ${d.beneficioVenta.toFixed(2)} €</div>
+          <div class="card-muted">Dividendos: ${d.dividendos.toFixed(2)} €</div>
+          <div class="card-muted">Gastos: ${d.gastos.toFixed(2)} €</div>
+          <div class="card-muted" style="color:var(--accent-brass); font-weight:700;">Total: ${total.toFixed(2)} €</div>
+        </div>
+      `;
+    }).join('')}
+  `;
 }
 
 /* ---------- Copia de seguridad completa (protegida con PIN) ----------
@@ -4540,6 +5213,247 @@ document.getElementById('workObservacionesList').addEventListener('click', async
       await renderWorkObservacionesList(currentConceptoId);
     }
   }
+});
+
+/* ---------- eventos: Cuentas (bloqueo propio) ---------- */
+document.getElementById('btnAccounts').addEventListener('click', () => go('accounts-lock'));
+document.getElementById('btnAccountsHomeBack').addEventListener('click', () => history.back());
+document.getElementById('btnAccountsSavePin').addEventListener('click', async () => {
+  const pin = document.getElementById('accountsPinSetupInput').value.trim();
+  const confirmPin = document.getElementById('accountsPinSetupConfirm').value.trim();
+  const errorEl = document.getElementById('accountsPinSetupError');
+  if (pin.length < 4) { errorEl.textContent = 'El PIN debe tener al menos 4 dígitos.'; return; }
+  if (pin !== confirmPin) { errorEl.textContent = 'Los dos PIN no coinciden.'; return; }
+  errorEl.textContent = '';
+  await saveAccountsPin(pin);
+  if (await isPlatformAuthenticatorAvailable()) showAccountsLockSubview('offer');
+  else enterAccountsHome();
+});
+document.getElementById('btnAccountsEnableBiometric').addEventListener('click', async () => {
+  try { await registerAccountsBiometric(); }
+  catch (e) { alert('No se pudo activar la huella/rostro en este dispositivo. Puedes seguir usando el PIN.'); }
+  enterAccountsHome();
+});
+document.getElementById('btnAccountsSkipBiometric').addEventListener('click', () => enterAccountsHome());
+document.getElementById('btnAccountsUnlockPin').addEventListener('click', async () => {
+  const pin = document.getElementById('accountsPinUnlockInput').value.trim();
+  const errorEl = document.getElementById('accountsPinUnlockError');
+  if (await verifyAccountsPin(pin)) { errorEl.textContent = ''; enterAccountsHome(); }
+  else { errorEl.textContent = 'PIN incorrecto.'; document.getElementById('accountsPinUnlockInput').value = ''; }
+});
+document.getElementById('btnAccountsBiometricUnlock').addEventListener('click', async () => {
+  const ok = await unlockAccountsWithBiometric();
+  if (ok) enterAccountsHome();
+  else document.getElementById('accountsPinUnlockError').textContent = 'No se reconoció la huella/rostro. Prueba con el PIN.';
+});
+document.getElementById('btnAccountsLockCancel').addEventListener('click', () => history.back());
+
+/* ---------- eventos: Acciones ---------- */
+document.getElementById('btnGoStocks').addEventListener('click', () => go('stocks-home'));
+document.getElementById('btnGoStocksHeld').addEventListener('click', () => go('stocks-held'));
+document.getElementById('btnGoStocksSold').addEventListener('click', () => go('stocks-sold'));
+document.getElementById('btnGoDividends').addEventListener('click', () => go('stocks-dividends'));
+document.getElementById('btnGoExpenses').addEventListener('click', () => go('stocks-expenses'));
+document.getElementById('btnGoResults').addEventListener('click', () => go('stocks-results'));
+document.getElementById('btnGoBanks').addEventListener('click', () => go('stocks-banks'));
+
+/* ---------- eventos: Bancos ---------- */
+document.getElementById('btnAddStockBank').addEventListener('click', async () => {
+  const nombre = document.getElementById('stockBankNombre').value.trim();
+  if (!nombre) { alert('Escribe el nombre del banco.'); return; }
+  await dbPut('stockBanks', { id: uuid(), nombre });
+  document.getElementById('stockBankNombre').value = '';
+  await renderStockBanksView();
+});
+document.getElementById('stockBanksView').addEventListener('click', async (e) => {
+  const delBtn = e.target.closest('[data-action="delete-stock-bank"]');
+  if (delBtn) {
+    if (confirm('¿Eliminar este banco? Las acciones y gastos que lo usaban mantendrán el dato pero ya no aparecerá en la lista.')) {
+      await dbDelete('stockBanks', delBtn.dataset.id);
+      await renderStockBanksView();
+    }
+  }
+});
+
+/* ---------- eventos: Nuevas acciones (en cartera) ---------- */
+document.getElementById('btnAddStock').addEventListener('click', async () => {
+  const nombre = document.getElementById('stockNombre').value.trim();
+  const banco = document.getElementById('stockBanco').value || '';
+  const fechaCompra = document.getElementById('stockFechaCompra').value;
+  const fechaVenta = document.getElementById('stockFechaVenta').value;
+  const precioCompra = parseFloat(document.getElementById('stockPrecioCompra').value) || 0;
+  const numAcciones = parseInt(document.getElementById('stockNumAcciones').value, 10) || 0;
+  const precioVenta = parseFloat(document.getElementById('stockPrecioVenta').value) || 0;
+  if (!nombre) { alert('Escribe el nombre de la acción.'); return; }
+  if (numAcciones <= 0) { alert('Indica el nº de acciones.'); return; }
+  await addStock({ nombre, banco, fechaCompra, fechaVenta, precioCompra, numAcciones, precioVenta });
+  document.getElementById('stockNombre').value = '';
+  document.getElementById('stockFechaCompra').value = '';
+  document.getElementById('stockFechaVenta').value = '';
+  document.getElementById('stockPrecioCompra').value = '';
+  document.getElementById('stockNumAcciones').value = '';
+  document.getElementById('stockPrecioVenta').value = '';
+  await populateStockAddFormSelects();
+  await renderStocksHeldView();
+  await renderStocksHeldEditList();
+});
+document.getElementById('stocksHeldEditList').addEventListener('change', async (e) => {
+  const input = e.target.closest('.stock-input');
+  if (!input) return;
+  const entry = await dbGet('stockShares', input.dataset.id);
+  if (!entry) return;
+  entry[input.dataset.field] = ['precioCompra', 'precioVenta'].includes(input.dataset.field) ? (parseFloat(input.value) || 0) : (input.dataset.field === 'numAcciones' ? (parseInt(input.value, 10) || 0) : input.value);
+  await updateStock(entry);
+  await renderStocksHeldView();
+  await renderStocksHeldEditList();
+  await renderStocksSoldView();
+});
+document.getElementById('stocksHeldEditList').addEventListener('click', async (e) => {
+  const delBtn = e.target.closest('[data-action="delete-stock"]');
+  if (delBtn) {
+    if (confirm('¿Eliminar esta acción? Se quitará también de dividendos y gastos asociados.')) {
+      await deleteStockCascade(delBtn.dataset.id);
+      await renderStocksHeldView();
+      await renderStocksHeldEditList();
+    }
+  }
+});
+document.getElementById('btnToggleStocksHeldEdit').addEventListener('click', () => {
+  stocksHeldEditMode = !stocksHeldEditMode;
+  document.getElementById('stocksHeldView').style.display = stocksHeldEditMode ? 'none' : 'block';
+  document.getElementById('stocksHeldEdit').style.display = stocksHeldEditMode ? 'block' : 'none';
+  document.getElementById('btnToggleStocksHeldEdit').textContent = stocksHeldEditMode ? '✅ Cerrar edición' : '✏️ Modificar';
+});
+
+/* ---------- eventos: Acciones vendidas ---------- */
+document.getElementById('stocksSoldEditList').addEventListener('change', async (e) => {
+  const input = e.target.closest('.stock-input');
+  if (!input) return;
+  const entry = await dbGet('stockShares', input.dataset.id);
+  if (!entry) return;
+  entry[input.dataset.field] = ['precioCompra', 'precioVenta'].includes(input.dataset.field) ? (parseFloat(input.value) || 0) : (input.dataset.field === 'numAcciones' ? (parseInt(input.value, 10) || 0) : input.value);
+  await updateStock(entry);
+  await renderStocksSoldView();
+  await renderStocksSoldEditList();
+  await renderStocksHeldView();
+});
+document.getElementById('stocksSoldEditList').addEventListener('click', async (e) => {
+  const delBtn = e.target.closest('[data-action="delete-stock"]');
+  if (delBtn) {
+    if (confirm('¿Eliminar esta acción? Se quitará también de dividendos y gastos asociados.')) {
+      await deleteStockCascade(delBtn.dataset.id);
+      await renderStocksSoldView();
+      await renderStocksSoldEditList();
+    }
+  }
+});
+document.getElementById('btnToggleStocksSoldEdit').addEventListener('click', () => {
+  stocksSoldEditMode = !stocksSoldEditMode;
+  document.getElementById('stocksSoldView').style.display = stocksSoldEditMode ? 'none' : 'block';
+  document.getElementById('stocksSoldEdit').style.display = stocksSoldEditMode ? 'block' : 'none';
+  document.getElementById('btnToggleStocksSoldEdit').textContent = stocksSoldEditMode ? '✅ Cerrar edición' : '✏️ Modificar';
+});
+
+/* ---------- eventos: Dividendos ---------- */
+document.getElementById('btnAddDividend').addEventListener('click', async () => {
+  const total = parseFloat(document.getElementById('dividendTotal').value) || 0;
+  const fecha = document.getElementById('dividendFecha').value;
+  const stockIds = Array.from(document.getElementById('dividendStocks').selectedOptions).map(o => o.value);
+  if (total <= 0) { alert('Indica el total del dividendo.'); return; }
+  if (stockIds.length === 0) { alert('Selecciona al menos una acción asociada.'); return; }
+  await addDividend(total, fecha, stockIds);
+  document.getElementById('dividendTotal').value = '';
+  document.getElementById('dividendFecha').value = '';
+  await renderDividendsView();
+  await renderDividendsEditList();
+  await renderStocksHeldView();
+});
+document.getElementById('dividendsEditList').addEventListener('change', async (e) => {
+  const input = e.target.closest('.dividend-input');
+  if (!input) return;
+  const entry = await dbGet('stockDividends', input.dataset.id);
+  if (!entry) return;
+  if (input.dataset.field === 'total') {
+    const newTotal = parseFloat(input.value) || 0;
+    const stocks = await dbGetAll('stockShares');
+    const involved = stocks.filter(s => (entry.allocations || []).some(a => a.stockId === s.id));
+    entry.total = newTotal;
+    entry.allocations = splitProportionally(newTotal, involved);
+  } else {
+    entry[input.dataset.field] = input.value;
+  }
+  await dbPut('stockDividends', entry);
+  await renderDividendsView();
+  await renderDividendsEditList();
+  await renderStocksHeldView();
+});
+document.getElementById('dividendsEditList').addEventListener('click', async (e) => {
+  const delBtn = e.target.closest('[data-action="delete-dividend"]');
+  if (delBtn) {
+    if (confirm('¿Eliminar este dividendo?')) {
+      await dbDelete('stockDividends', delBtn.dataset.id);
+      await renderDividendsView();
+      await renderDividendsEditList();
+      await renderStocksHeldView();
+    }
+  }
+});
+document.getElementById('btnToggleDividendsEdit').addEventListener('click', () => {
+  dividendsEditMode = !dividendsEditMode;
+  document.getElementById('dividendsView').style.display = dividendsEditMode ? 'none' : 'block';
+  document.getElementById('dividendsEdit').style.display = dividendsEditMode ? 'block' : 'none';
+  document.getElementById('btnToggleDividendsEdit').textContent = dividendsEditMode ? '✅ Cerrar edición' : '✏️ Modificar';
+});
+
+/* ---------- eventos: Gastos mantenimiento cuenta ---------- */
+document.getElementById('btnAddStockExpense').addEventListener('click', async () => {
+  const fecha = document.getElementById('stockExpenseFecha').value;
+  const gasto = parseFloat(document.getElementById('stockExpenseGasto').value) || 0;
+  const bancoId = document.getElementById('stockExpenseBanco').value || '';
+  if (gasto <= 0) { alert('Indica el importe del gasto.'); return; }
+  if (!bancoId) { alert('Selecciona un banco.'); return; }
+  await addStockExpense(fecha, gasto, bancoId);
+  document.getElementById('stockExpenseFecha').value = '';
+  document.getElementById('stockExpenseGasto').value = '';
+  await renderStockExpensesView();
+  await renderStockExpensesEditList();
+  await renderStocksHeldView();
+});
+document.getElementById('expensesStockEditList').addEventListener('change', async (e) => {
+  const input = e.target.closest('.stock-expense-input');
+  if (!input) return;
+  const entry = await dbGet('stockMaintenanceExpenses', input.dataset.id);
+  if (!entry) return;
+  if (input.dataset.field === 'gasto') {
+    const newGasto = parseFloat(input.value) || 0;
+    const stocks = await dbGetAll('stockShares');
+    const involved = stocks.filter(s => (entry.allocations || []).some(a => a.stockId === s.id));
+    entry.gasto = newGasto;
+    entry.allocations = splitProportionally(newGasto, involved);
+  } else {
+    entry[input.dataset.field] = input.value;
+  }
+  await dbPut('stockMaintenanceExpenses', entry);
+  await renderStockExpensesView();
+  await renderStockExpensesEditList();
+  await renderStocksHeldView();
+});
+document.getElementById('expensesStockEditList').addEventListener('click', async (e) => {
+  const delBtn = e.target.closest('[data-action="delete-stock-expense"]');
+  if (delBtn) {
+    if (confirm('¿Eliminar este gasto?')) {
+      await dbDelete('stockMaintenanceExpenses', delBtn.dataset.id);
+      await renderStockExpensesView();
+      await renderStockExpensesEditList();
+      await renderStocksHeldView();
+    }
+  }
+});
+document.getElementById('btnToggleStockExpensesEdit').addEventListener('click', () => {
+  stockExpensesEditMode = !stockExpensesEditMode;
+  document.getElementById('expensesStockView').style.display = stockExpensesEditMode ? 'none' : 'block';
+  document.getElementById('expensesStockEdit').style.display = stockExpensesEditMode ? 'block' : 'none';
+  document.getElementById('btnToggleStockExpensesEdit').textContent = stockExpensesEditMode ? '✅ Cerrar edición' : '✏️ Modificar';
 });
 
 /* ---------- arranque ---------- */
