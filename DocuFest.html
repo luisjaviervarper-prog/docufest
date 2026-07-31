@@ -915,12 +915,12 @@
           <input type="date" id="stockFechaCompra">
           <label class="field-label">Fecha de venta</label>
           <input type="date" id="stockFechaVenta">
-          <label class="field-label">Precio de compra (€/acción)</label>
-          <input type="number" step="0.0001" id="stockPrecioCompra" placeholder="Ej. 8.25">
+          <label class="field-label">Total pagado por la compra (€)</label>
+          <input type="number" step="0.01" id="stockTotalCompra" placeholder="Ej. 4125.00">
           <label class="field-label">Nº de acciones</label>
           <input type="number" step="1" id="stockNumAcciones" placeholder="Ej. 500">
-          <label class="field-label">Precio de venta (€/acción)</label>
-          <input type="number" step="0.0001" id="stockPrecioVenta" placeholder="Solo si ya la has vendido">
+          <label class="field-label">Total cobrado por la venta (€)</label>
+          <input type="number" step="0.01" id="stockTotalVenta" placeholder="Solo si ya la has vendido">
           <button class="btn-ember" id="btnAddStock" style="margin-top:4px;">＋ Añadir acción</button>
         </div>
         <div id="stocksHeldEditList"></div>
@@ -3469,14 +3469,16 @@ function stockCardHtml(s, fin, bankMap){
   const sold = isStockSold(s);
   const divTotal = fin.divTotal || 0;
   const expTotal = fin.expTotal || 0;
-  const beneficioVenta = sold ? (Number(s.precioVenta || 0) - Number(s.precioCompra || 0)) * Number(s.numAcciones || 0) : null;
+  const beneficioVenta = sold ? (Number(s.totalVenta || 0) - Number(s.totalCompra || 0)) : null;
+  const precioCompraUnit = Number(s.numAcciones || 0) > 0 ? Number(s.totalCompra || 0) / Number(s.numAcciones) : 0;
+  const precioVentaUnit = Number(s.numAcciones || 0) > 0 ? Number(s.totalVenta || 0) / Number(s.numAcciones) : 0;
   const beneficioTotal = (beneficioVenta || 0) + divTotal - expTotal;
   return `
     <div class="card" data-id="${s.id}" style="cursor:default;">
       <span class="card-title">${escapeHtml(s.nombre || '')}</span>
       <div class="card-muted">${bankMap[s.banco] ? '🏛 ' + escapeHtml(bankMap[s.banco]) : ''}</div>
-      <div class="card-muted">Compra: ${s.fechaCompra ? escapeHtml(formatDateRange(s.fechaCompra, s.fechaCompra)) : '—'} · ${Number(s.precioCompra || 0).toFixed(4)} €/acc · ${s.numAcciones || 0} acc.</div>
-      ${sold ? `<div class="card-muted">Venta: ${escapeHtml(formatDateRange(s.fechaVenta, s.fechaVenta))} · ${Number(s.precioVenta || 0).toFixed(4)} €/acc</div>` : '<div class="card-muted">Sin vender todavía</div>'}
+      <div class="card-muted">Compra: ${s.fechaCompra ? escapeHtml(formatDateRange(s.fechaCompra, s.fechaCompra)) : '—'} · Total ${Number(s.totalCompra || 0).toFixed(2)} € (${precioCompraUnit.toFixed(4)} €/acc) · ${s.numAcciones || 0} acc.</div>
+      ${sold ? `<div class="card-muted">Venta: ${escapeHtml(formatDateRange(s.fechaVenta, s.fechaVenta))} · Total ${Number(s.totalVenta || 0).toFixed(2)} € (${precioVentaUnit.toFixed(4)} €/acc)</div>` : '<div class="card-muted">Sin vender todavía</div>'}
       <div class="card-muted">Beneficio venta: ${sold ? beneficioVenta.toFixed(2) + ' €' : '—'}</div>
       <div class="card-muted">Beneficio dividendos: ${divTotal.toFixed(2)} €</div>
       <div class="card-muted">Gastos mantenimiento asociados: ${expTotal.toFixed(2)} €</div>
@@ -3541,12 +3543,12 @@ async function renderStocksHeldEditList(){
       <input type="date" class="stock-input" data-field="fechaCompra" data-id="${s.id}" value="${s.fechaCompra || ''}">
       <label class="field-label">Fecha de venta</label>
       <input type="date" class="stock-input" data-field="fechaVenta" data-id="${s.id}" value="${s.fechaVenta || ''}">
-      <label class="field-label">Precio de compra (€/acción)</label>
-      <input type="number" step="0.0001" class="stock-input" data-field="precioCompra" data-id="${s.id}" value="${s.precioCompra || ''}">
+      <label class="field-label">Total pagado por la compra (€)</label>
+      <input type="number" step="0.01" class="stock-input" data-field="totalCompra" data-id="${s.id}" value="${s.totalCompra || ''}">
       <label class="field-label">Nº de acciones</label>
       <input type="number" step="1" class="stock-input" data-field="numAcciones" data-id="${s.id}" value="${s.numAcciones || ''}">
-      <label class="field-label">Precio de venta (€/acción)</label>
-      <input type="number" step="0.0001" class="stock-input" data-field="precioVenta" data-id="${s.id}" value="${s.precioVenta || ''}">
+      <label class="field-label">Total cobrado por la venta (€)</label>
+      <input type="number" step="0.01" class="stock-input" data-field="totalVenta" data-id="${s.id}" value="${s.totalVenta || ''}">
     </div>
   `).join('');
 }
@@ -3560,9 +3562,9 @@ async function renderStocksHeldScreen(){
   document.getElementById('stockFechaCompra').value = '';
   document.getElementById('stockFechaVenta').value = '';
   document.getElementById('stockNombre').value = '';
-  document.getElementById('stockPrecioCompra').value = '';
+  document.getElementById('stockTotalCompra').value = '';
   document.getElementById('stockNumAcciones').value = '';
-  document.getElementById('stockPrecioVenta').value = '';
+  document.getElementById('stockTotalVenta').value = '';
   await renderStocksHeldView();
   await renderStocksHeldEditList();
 }
@@ -3594,12 +3596,12 @@ async function renderStocksSoldEditList(){
       <input type="date" class="stock-input" data-field="fechaCompra" data-id="${s.id}" value="${s.fechaCompra || ''}">
       <label class="field-label">Fecha de venta</label>
       <input type="date" class="stock-input" data-field="fechaVenta" data-id="${s.id}" value="${s.fechaVenta || ''}">
-      <label class="field-label">Precio de compra (€/acción)</label>
-      <input type="number" step="0.0001" class="stock-input" data-field="precioCompra" data-id="${s.id}" value="${s.precioCompra || ''}">
+      <label class="field-label">Total pagado por la compra (€)</label>
+      <input type="number" step="0.01" class="stock-input" data-field="totalCompra" data-id="${s.id}" value="${s.totalCompra || ''}">
       <label class="field-label">Nº de acciones</label>
       <input type="number" step="1" class="stock-input" data-field="numAcciones" data-id="${s.id}" value="${s.numAcciones || ''}">
-      <label class="field-label">Precio de venta (€/acción)</label>
-      <input type="number" step="0.0001" class="stock-input" data-field="precioVenta" data-id="${s.id}" value="${s.precioVenta || ''}">
+      <label class="field-label">Total cobrado por la venta (€)</label>
+      <input type="number" step="0.01" class="stock-input" data-field="totalVenta" data-id="${s.id}" value="${s.totalVenta || ''}">
     </div>
   `).join('');
 }
@@ -3743,9 +3745,9 @@ async function renderStocksResults(){
   const byNombre = {};
   stocks.forEach(s => {
     const fin = finMap[s.id] || {};
-    const invertido = Number(s.precioCompra || 0) * Number(s.numAcciones || 0);
+    const invertido = Number(s.totalCompra || 0);
     const sold = isStockSold(s);
-    const beneficioVenta = sold ? (Number(s.precioVenta || 0) - Number(s.precioCompra || 0)) * Number(s.numAcciones || 0) : 0;
+    const beneficioVenta = sold ? (Number(s.totalVenta || 0) - Number(s.totalCompra || 0)) : 0;
     totalInvertido += invertido;
     totalBeneficioVenta += beneficioVenta;
     totalDividendos += fin.divTotal || 0;
@@ -5281,18 +5283,18 @@ document.getElementById('btnAddStock').addEventListener('click', async () => {
   const banco = document.getElementById('stockBanco').value || '';
   const fechaCompra = document.getElementById('stockFechaCompra').value;
   const fechaVenta = document.getElementById('stockFechaVenta').value;
-  const precioCompra = parseFloat(document.getElementById('stockPrecioCompra').value) || 0;
+  const totalCompra = parseFloat(document.getElementById('stockTotalCompra').value) || 0;
   const numAcciones = parseInt(document.getElementById('stockNumAcciones').value, 10) || 0;
-  const precioVenta = parseFloat(document.getElementById('stockPrecioVenta').value) || 0;
+  const totalVenta = parseFloat(document.getElementById('stockTotalVenta').value) || 0;
   if (!nombre) { alert('Escribe el nombre de la acción.'); return; }
   if (numAcciones <= 0) { alert('Indica el nº de acciones.'); return; }
-  await addStock({ nombre, banco, fechaCompra, fechaVenta, precioCompra, numAcciones, precioVenta });
+  await addStock({ nombre, banco, fechaCompra, fechaVenta, totalCompra, numAcciones, totalVenta });
   document.getElementById('stockNombre').value = '';
   document.getElementById('stockFechaCompra').value = '';
   document.getElementById('stockFechaVenta').value = '';
-  document.getElementById('stockPrecioCompra').value = '';
+  document.getElementById('stockTotalCompra').value = '';
   document.getElementById('stockNumAcciones').value = '';
-  document.getElementById('stockPrecioVenta').value = '';
+  document.getElementById('stockTotalVenta').value = '';
   await populateStockAddFormSelects();
   await renderStocksHeldView();
   await renderStocksHeldEditList();
@@ -5302,7 +5304,7 @@ document.getElementById('stocksHeldEditList').addEventListener('change', async (
   if (!input) return;
   const entry = await dbGet('stockShares', input.dataset.id);
   if (!entry) return;
-  entry[input.dataset.field] = ['precioCompra', 'precioVenta'].includes(input.dataset.field) ? (parseFloat(input.value) || 0) : (input.dataset.field === 'numAcciones' ? (parseInt(input.value, 10) || 0) : input.value);
+  entry[input.dataset.field] = ['totalCompra', 'totalVenta'].includes(input.dataset.field) ? (parseFloat(input.value) || 0) : (input.dataset.field === 'numAcciones' ? (parseInt(input.value, 10) || 0) : input.value);
   await updateStock(entry);
   await renderStocksHeldView();
   await renderStocksHeldEditList();
@@ -5331,7 +5333,7 @@ document.getElementById('stocksSoldEditList').addEventListener('change', async (
   if (!input) return;
   const entry = await dbGet('stockShares', input.dataset.id);
   if (!entry) return;
-  entry[input.dataset.field] = ['precioCompra', 'precioVenta'].includes(input.dataset.field) ? (parseFloat(input.value) || 0) : (input.dataset.field === 'numAcciones' ? (parseInt(input.value, 10) || 0) : input.value);
+  entry[input.dataset.field] = ['totalCompra', 'totalVenta'].includes(input.dataset.field) ? (parseFloat(input.value) || 0) : (input.dataset.field === 'numAcciones' ? (parseInt(input.value, 10) || 0) : input.value);
   await updateStock(entry);
   await renderStocksSoldView();
   await renderStocksSoldEditList();
