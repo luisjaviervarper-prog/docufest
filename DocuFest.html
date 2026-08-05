@@ -557,8 +557,15 @@
           <input type="date" id="annotationEnd">
           <label class="field-label">Concepto</label>
           <input type="text" id="annotationConcepto" placeholder="Ej. Viaje médico, mudanza...">
+          <div style="display:flex; gap:8px;">
+            <button class="btn-outline" id="btnAddAnnotationPhotoGallery" style="flex:1;">🖼 Foto</button>
+            <button class="btn-outline" id="btnAddAnnotationPhotoCamera" style="flex:1;">📷 Cámara</button>
+          </div>
+          <div class="help-text" id="annotationPhotoStatus" style="margin:-4px 0 8px;"></div>
           <button class="btn-ember" id="btnAddAnnotation" style="margin-top:4px;">＋ Añadir anotación</button>
         </div>
+        <input type="file" id="annotationPhotoFileInput" accept="image/*" style="display:none">
+        <input type="file" id="annotationPhotoCameraInput" accept="image/*" capture="environment" style="display:none">
         <div id="annotationsEditList"></div>
       </div>
       <button class="btn-outline" id="btnToggleAnnotationsEdit">✏️ Modificar anotaciones</button>
@@ -1288,8 +1295,13 @@ async function toggleLactanciaDay(dateStr){
   if (existing) await dbDelete('lactanciaDays', existing.id);
   else await dbPut('lactanciaDays', { id: uuid(), dateStr });
 }
-async function addAnnotation(startDate, endDate, concepto){
-  const annotation = { id: uuid(), startDate, endDate: endDate || startDate, concepto, createdAt: Date.now() };
+async function addAnnotation(startDate, endDate, concepto, file){
+  const annotation = {
+    id: uuid(), startDate, endDate: endDate || startDate, concepto,
+    photoBlob: file || null, mimeType: file ? file.type : null,
+    photoFileName: file ? file.name : null,
+    createdAt: Date.now()
+  };
   await dbPut('annotations', annotation);
   return annotation;
 }
@@ -1807,6 +1819,7 @@ let ticketsEditMode = false;
 let restaurantEditMode = false;
 let singleEditRestaurantId = null;
 let pendingRestPhoto = null;
+let pendingAnnotationPhoto = null;
 let pendingExpensePhoto = null;
 let vacationEditMode = false;
 let festivoEditMode = false;
@@ -2465,23 +2478,46 @@ async function renderAnnotationsView(){
   items.sort((a, b) => (b.startDate || '').localeCompare(a.startDate || ''));
   const container = document.getElementById('annotationsView');
   if (items.length === 0) { container.innerHTML = '<p class="help-text">Sin anotaciones todavía.</p>'; return; }
-  container.innerHTML = items.map(a => `
-    <div class="field-row-view">
-      <span class="field-row-label">${formatDateRange(a.startDate, a.endDate)}</span>
-      <span class="field-row-value">${escapeHtml(a.concepto)}</span>
-    </div>
-  `).join('');
+  container.innerHTML = items.map(a => {
+    let photoLink = '';
+    if (a.photoBlob) {
+      const url = URL.createObjectURL(a.photoBlob);
+      objectUrlsToRevoke.push(url);
+      photoLink = ` <a href="${url}" download="${escapeHtml(a.photoFileName || 'foto.jpg')}" style="color:var(--accent-brass); text-decoration:none;">📷 Descargar foto</a>`;
+    }
+    return `
+      <div class="field-row-view">
+        <span class="field-row-label">${formatDateRange(a.startDate, a.endDate)}</span>
+        <span class="field-row-value">${escapeHtml(a.concepto)}${photoLink}</span>
+      </div>
+    `;
+  }).join('');
 }
 async function renderAnnotationsEditList(){
   const items = await dbGetAll('annotations');
   items.sort((a, b) => (b.startDate || '').localeCompare(a.startDate || ''));
-  document.getElementById('annotationsEditList').innerHTML = items.map(a => `
-    <div class="card" style="cursor:default;">
-      <button class="icon-btn danger" data-action="delete-annotation" data-id="${a.id}">✕</button>
-      <div class="card-title">${formatDateRange(a.startDate, a.endDate)}</div>
-      <div class="card-muted">${escapeHtml(a.concepto)}</div>
-    </div>
-  `).join('');
+  document.getElementById('annotationsEditList').innerHTML = items.map(a => {
+    let thumb = '';
+    if (a.photoBlob) {
+      const url = URL.createObjectURL(a.photoBlob);
+      objectUrlsToRevoke.push(url);
+      thumb = `
+        <img src="${url}" style="width:100%; border-radius:6px; margin-top:8px;">
+        <div style="display:flex; gap:8px; margin-top:6px;">
+          <a class="btn-outline" href="${url}" download="${escapeHtml(a.photoFileName || 'foto.jpg')}" style="flex:1; text-align:center; text-decoration:none;">⬇ Descargar</a>
+          <button class="btn-outline" data-action="remove-annotation-photo" data-id="${a.id}" style="flex:1;">🗑 Quitar foto</button>
+        </div>
+      `;
+    }
+    return `
+      <div class="card" style="cursor:default;">
+        <button class="icon-btn danger" data-action="delete-annotation" data-id="${a.id}">✕</button>
+        <div class="card-title">${formatDateRange(a.startDate, a.endDate)}</div>
+        <div class="card-muted">${escapeHtml(a.concepto)}</div>
+        ${thumb}
+      </div>
+    `;
+  }).join('');
 }
 async function renderAnnotations(){
   await renderAnnotationsView();
@@ -3146,7 +3182,8 @@ const FULL_BACKUP_BLOB_FIELDS = {
   documents: 'blob',
   tripTickets: 'photoBlob',
   tripExpenses: 'photoBlob',
-  restaurantEntries: 'photoBlob'
+  restaurantEntries: 'photoBlob',
+  annotations: 'photoBlob'
 };
 /* El cifrado (Web Crypto / crypto.subtle) solo está disponible en "contextos
    seguros": una web servida por https, o localhost. Muchos navegadores
@@ -4137,18 +4174,43 @@ document.getElementById('btnAddAnnotation').addEventListener('click', async () =
   const end = document.getElementById('annotationEnd').value;
   const concepto = document.getElementById('annotationConcepto').value.trim();
   if (!start || !concepto) { alert('Indica al menos la fecha de inicio y el concepto.'); return; }
-  await addAnnotation(start, end, concepto);
+  await addAnnotation(start, end, concepto, pendingAnnotationPhoto);
+  pendingAnnotationPhoto = null;
   document.getElementById('annotationStart').value = '';
   document.getElementById('annotationEnd').value = '';
   document.getElementById('annotationConcepto').value = '';
+  document.getElementById('annotationPhotoStatus').textContent = '';
   await renderAnnotations();
 });
+function handleAnnotationPhotoSelected(file){
+  if (!file) return;
+  pendingAnnotationPhoto = file;
+  document.getElementById('annotationPhotoStatus').textContent = 'Foto añadida ✓';
+}
+document.getElementById('btnAddAnnotationPhotoGallery').addEventListener('click', () => document.getElementById('annotationPhotoFileInput').click());
+document.getElementById('btnAddAnnotationPhotoCamera').addEventListener('click', () => document.getElementById('annotationPhotoCameraInput').click());
+document.getElementById('annotationPhotoFileInput').addEventListener('change', (e) => { handleAnnotationPhotoSelected(e.target.files[0]); e.target.value = ''; });
+document.getElementById('annotationPhotoCameraInput').addEventListener('change', (e) => { handleAnnotationPhotoSelected(e.target.files[0]); e.target.value = ''; });
 document.getElementById('annotationsEditList').addEventListener('click', async (e) => {
   const delBtn = e.target.closest('[data-action="delete-annotation"]');
   if (delBtn) {
     if (confirm('¿Eliminar esta anotación?')) {
       await deleteAnnotation(delBtn.dataset.id);
       await renderAnnotations();
+    }
+    return;
+  }
+  const removePhotoBtn = e.target.closest('[data-action="remove-annotation-photo"]');
+  if (removePhotoBtn) {
+    if (confirm('¿Quitar la foto de esta anotación?')) {
+      const entry = await dbGet('annotations', removePhotoBtn.dataset.id);
+      if (entry) {
+        entry.photoBlob = null;
+        entry.mimeType = null;
+        entry.photoFileName = null;
+        await dbPut('annotations', entry);
+        await renderAnnotations();
+      }
     }
   }
 });
