@@ -807,6 +807,7 @@
         <div id="workObrasEditList"></div>
       </div>
       <button class="btn-outline" id="btnToggleWorkObrasEdit">✏️ Modificar</button>
+      <button class="btn-outline" id="btnGoWorkMessages" style="margin-top:10px;">🔒 Mensajes a recordar</button>
     </div>
   </section>
 
@@ -844,6 +845,68 @@
         <button class="btn-ember" id="btnAddWorkObservacion" style="margin-top:4px;">＋ Añadir observación</button>
       </div>
       <div id="workObservacionesList"></div>
+    </div>
+  </section>
+
+  <!-- ===================== TRABAJO: MENSAJES A RECORDAR (BLOQUEO) ===================== -->
+  <section id="screen-work-messages-lock" class="screen">
+    <div class="center-column">
+      <h1 class="app-title" style="font-size:28px;">🔒 Mensajes a recordar</h1>
+
+      <div id="workMsgLockSetup" style="width:100%; max-width:320px; display:none;">
+        <p class="help-text">Crea un PIN propio para proteger esta sección. Se pedirá cada vez que entres.</p>
+        <label class="field-label">Nuevo PIN (4-6 dígitos)</label>
+        <input type="password" id="workMsgPinSetupInput" inputmode="numeric" maxlength="6" placeholder="••••">
+        <label class="field-label">Confirmar PIN</label>
+        <input type="password" id="workMsgPinSetupConfirm" inputmode="numeric" maxlength="6" placeholder="••••">
+        <div class="help-text" id="workMsgPinSetupError" style="color:var(--state-error);"></div>
+        <button class="btn-ember" id="btnWorkMsgSavePin">Guardar PIN</button>
+      </div>
+
+      <div id="workMsgLockUnlock" style="width:100%; max-width:320px; display:none;">
+        <p class="help-text">Introduce tu PIN para continuar.</p>
+        <input type="password" id="workMsgPinUnlockInput" inputmode="numeric" maxlength="6" placeholder="••••">
+        <div class="help-text" id="workMsgPinUnlockError" style="color:var(--state-error);"></div>
+        <button class="btn-ember" id="btnWorkMsgUnlockPin">Desbloquear</button>
+        <button class="btn-outline" id="btnWorkMsgBiometricUnlock" style="display:none;">🔓 Usar huella / rostro</button>
+        <button class="btn-outline" id="btnWorkMsgLockCancel">← Volver</button>
+      </div>
+
+      <div id="workMsgBiometricOffer" style="width:100%; max-width:320px; display:none;">
+        <p class="help-text">¿Quieres activar el desbloqueo con huella o rostro para no escribir el PIN cada vez?</p>
+        <button class="btn-ember" id="btnWorkMsgEnableBiometric">Activar huella / rostro</button>
+        <button class="btn-outline" id="btnWorkMsgSkipBiometric">Ahora no</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== TRABAJO: MENSAJES A RECORDAR ===================== -->
+  <section id="screen-work-messages" class="screen">
+    <div class="topbar">
+      <button class="icon-btn" id="btnWorkMessagesBack">←</button>
+      <h1>🔒 Mensajes a recordar</h1>
+    </div>
+    <div class="content">
+      <div id="workMessagesView"></div>
+      <div id="workMessagesEdit" style="display:none;">
+        <div class="tile" style="padding:14px;">
+          <label class="field-label">Fecha</label>
+          <input type="date" id="workMsgFecha">
+          <label class="field-label">Descripción</label>
+          <input type="text" id="workMsgDescripcion" placeholder="Escribe el mensaje a recordar...">
+          <div style="display:flex; gap:8px;">
+            <button class="btn-outline" id="btnAddWorkMsgPhotoGallery" style="flex:1;">🖼 Fotos</button>
+            <button class="btn-outline" id="btnAddWorkMsgPhotoCamera" style="flex:1;">📷 Cámara</button>
+          </div>
+          <div class="help-text" id="workMsgPhotoStatus" style="margin:-4px 0 8px;"></div>
+          <div id="workMsgPendingPhotos" style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:8px;"></div>
+          <button class="btn-ember" id="btnAddWorkMessage" style="margin-top:4px;">＋ Añadir mensaje</button>
+        </div>
+        <input type="file" id="workMsgPhotoFileInput" accept="image/*" multiple style="display:none">
+        <input type="file" id="workMsgPhotoCameraInput" accept="image/*" capture="environment" style="display:none">
+        <div id="workMessagesEditList"></div>
+      </div>
+      <button class="btn-outline" id="btnToggleWorkMessagesEdit">✏️ Modificar</button>
     </div>
   </section>
 
@@ -894,7 +957,7 @@
 /* ---------- IndexedDB helpers ---------- */
 function openDb(){
   return new Promise((resolve, reject) => {
-    const req = indexedDB.open('docufest_db', 12);
+    const req = indexedDB.open('docufest_db', 13);
     req.onupgradeneeded = (e) => {
       const db = e.target.result;
       if (!db.objectStoreNames.contains('profiles')) {
@@ -977,6 +1040,9 @@ function openDb(){
       if (!db.objectStoreNames.contains('workObservaciones')) {
         const s = db.createObjectStore('workObservaciones', { keyPath: 'id' });
         s.createIndex('conceptoId', 'conceptoId', { unique: false });
+      }
+      if (!db.objectStoreNames.contains('workMessages')) {
+        db.createObjectStore('workMessages', { keyPath: 'id' });
       }
     };
     req.onsuccess = () => resolve(req.result);
@@ -1842,6 +1908,8 @@ let currentObraId = null;
 let currentConceptoId = null;
 let workObrasEditMode = false;
 let workConceptosEditMode = false;
+let workMessagesEditMode = false;
+let pendingWorkMsgPhotos = [];
 
 function go(view, params = {}){
   const state = { view, ...params };
@@ -1880,6 +1948,8 @@ async function applyState(state){
   if (state.view === 'work-home') await renderWorkObrasScreen();
   if (state.view === 'work-obra-detail') await renderWorkObraDetail(currentObraId);
   if (state.view === 'work-concepto-detail') await renderWorkConceptoDetail(currentConceptoId);
+  if (state.view === 'work-messages-lock') await bootWorkMsgLockScreen();
+  if (state.view === 'work-messages') await renderWorkMessagesScreen();
 }
 
 /* ---------- render: bienvenida ---------- */
@@ -3162,6 +3232,152 @@ async function renderWorkConceptoDetail(conceptoId){
   await renderWorkObservacionesList(conceptoId);
 }
 
+/* ======================================================================
+   TRABAJO: Mensajes a recordar — bloqueo propio (PIN + huella/rostro),
+   independiente del bloqueo general de la app. Se pide SIEMPRE al entrar.
+   ====================================================================== */
+const WMSG_PIN_SALT_KEY = 'docufest_workmsg_pin_salt';
+const WMSG_PIN_HASH_KEY = 'docufest_workmsg_pin_hash';
+const WMSG_WEBAUTHN_CRED_KEY = 'docufest_workmsg_webauthn_cred_id';
+
+function hasWorkMsgPinConfigured(){ return !!localStorage.getItem(WMSG_PIN_HASH_KEY); }
+async function saveWorkMsgPin(pin){
+  const salt = randomBytes(16);
+  const hash = await hashPin(pin, salt);
+  localStorage.setItem(WMSG_PIN_SALT_KEY, bytesToHex(salt));
+  localStorage.setItem(WMSG_PIN_HASH_KEY, hash);
+}
+async function verifyWorkMsgPin(pin){
+  const saltHex = localStorage.getItem(WMSG_PIN_SALT_KEY);
+  if (!saltHex) return false;
+  const hash = await hashPin(pin, hexToBytes(saltHex));
+  return hash === localStorage.getItem(WMSG_PIN_HASH_KEY);
+}
+function hasWorkMsgBiometricConfigured(){ return !!localStorage.getItem(WMSG_WEBAUTHN_CRED_KEY); }
+async function registerWorkMsgBiometric(){
+  const credential = await navigator.credentials.create({
+    publicKey: {
+      challenge: randomBytes(32),
+      rp: { name: 'DocuFest Mensajes' },
+      user: { id: randomBytes(16), name: 'docufest-workmsg-local', displayName: 'DocuFest Mensajes' },
+      pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
+      authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'required' },
+      timeout: 60000
+    }
+  });
+  localStorage.setItem(WMSG_WEBAUTHN_CRED_KEY, bytesToB64url(new Uint8Array(credential.rawId)));
+}
+async function unlockWorkMsgWithBiometric(){
+  const credIdB64 = localStorage.getItem(WMSG_WEBAUTHN_CRED_KEY);
+  if (!credIdB64) return false;
+  try {
+    await navigator.credentials.get({
+      publicKey: {
+        challenge: randomBytes(32),
+        allowCredentials: [{ id: b64urlToBytes(credIdB64), type: 'public-key' }],
+        userVerification: 'required',
+        timeout: 60000
+      }
+    });
+    return true;
+  } catch (e) {
+    console.warn('Biometría de Mensajes cancelada o fallida', e);
+    return false;
+  }
+}
+function showWorkMsgLockSubview(name){
+  document.getElementById('workMsgLockSetup').style.display = name === 'setup' ? 'block' : 'none';
+  document.getElementById('workMsgLockUnlock').style.display = name === 'unlock' ? 'block' : 'none';
+  document.getElementById('workMsgBiometricOffer').style.display = name === 'offer' ? 'block' : 'none';
+}
+async function bootWorkMsgLockScreen(){
+  if (!hasWorkMsgPinConfigured()) { showWorkMsgLockSubview('setup'); return; }
+  showWorkMsgLockSubview('unlock');
+  document.getElementById('workMsgPinUnlockInput').value = '';
+  document.getElementById('workMsgPinUnlockError').textContent = '';
+  const showBiometricBtn = hasWorkMsgBiometricConfigured() && await isPlatformAuthenticatorAvailable();
+  document.getElementById('btnWorkMsgBiometricUnlock').style.display = showBiometricBtn ? 'block' : 'none';
+}
+
+/* ---------- Trabajo: Mensajes a recordar (CRUD) ---------- */
+async function addWorkMessage(fecha, descripcion, files){
+  const entry = {
+    id: uuid(), fecha, descripcion,
+    photos: (files || []).map(f => ({ blob: f, mimeType: f.type, fileName: f.name })),
+    createdAt: Date.now()
+  };
+  await dbPut('workMessages', entry);
+  return entry;
+}
+async function deleteWorkMessage(id){ await dbDelete('workMessages', id); }
+async function renderWorkMessagesView(){
+  const items = await dbGetAll('workMessages');
+  items.sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
+  const container = document.getElementById('workMessagesView');
+  if (items.length === 0) { container.innerHTML = '<p class="help-text">Sin mensajes añadidos todavía.</p>'; return; }
+  container.innerHTML = items.map(m => {
+    const photosHtml = (m.photos || []).map(p => {
+      const url = URL.createObjectURL(p.blob);
+      objectUrlsToRevoke.push(url);
+      return `<a href="${url}" download="${escapeHtml(p.fileName || 'foto.jpg')}"><img src="${url}" style="width:72px; height:72px; object-fit:cover; border-radius:6px;"></a>`;
+    }).join('');
+    return `
+      <div class="card" style="cursor:default;">
+        <span class="card-title">${m.fecha ? escapeHtml(formatDateRange(m.fecha, m.fecha)) : '—'}</span>
+        <div class="card-muted" style="margin-top:4px; white-space:pre-wrap;">${escapeHtml(m.descripcion || '')}</div>
+        ${photosHtml ? `<div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:8px;">${photosHtml}</div>` : ''}
+      </div>
+    `;
+  }).join('');
+}
+async function renderWorkMessagesEditList(){
+  const items = await dbGetAll('workMessages');
+  items.sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
+  document.getElementById('workMessagesEditList').innerHTML = items.map(m => {
+    const photosHtml = (m.photos || []).map(p => {
+      const url = URL.createObjectURL(p.blob);
+      objectUrlsToRevoke.push(url);
+      return `<a href="${url}" download="${escapeHtml(p.fileName || 'foto.jpg')}"><img src="${url}" style="width:72px; height:72px; object-fit:cover; border-radius:6px;"></a>`;
+    }).join('');
+    return `
+      <div class="card" data-id="${m.id}" style="cursor:default;">
+        <button class="icon-btn danger" data-action="delete-work-message" data-id="${m.id}">✕</button>
+        <label class="field-label">Fecha</label>
+        <input type="date" class="work-msg-input" data-field="fecha" data-id="${m.id}" value="${m.fecha || ''}">
+        <label class="field-label">Descripción</label>
+        <input type="text" class="work-msg-input" data-field="descripcion" data-id="${m.id}" value="${escapeHtml(m.descripcion || '')}">
+        ${photosHtml ? `<div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:8px;">${photosHtml}</div>` : ''}
+      </div>
+    `;
+  }).join('');
+}
+function renderWorkMsgPendingPhotos(){
+  const container = document.getElementById('workMsgPendingPhotos');
+  container.innerHTML = pendingWorkMsgPhotos.map((f, i) => {
+    const url = URL.createObjectURL(f);
+    objectUrlsToRevoke.push(url);
+    return `
+      <div style="position:relative;">
+        <img src="${url}" style="width:64px; height:64px; object-fit:cover; border-radius:6px;">
+        <button class="icon-btn danger" data-action="remove-pending-photo" data-index="${i}" style="top:-8px; right:-8px; padding:2px 6px; font-size:12px;">✕</button>
+      </div>
+    `;
+  }).join('');
+}
+async function renderWorkMessagesScreen(){
+  workMessagesEditMode = false;
+  pendingWorkMsgPhotos = [];
+  document.getElementById('workMessagesView').style.display = 'block';
+  document.getElementById('workMessagesEdit').style.display = 'none';
+  document.getElementById('btnToggleWorkMessagesEdit').textContent = '✏️ Modificar';
+  document.getElementById('workMsgFecha').value = '';
+  document.getElementById('workMsgDescripcion').value = '';
+  document.getElementById('workMsgPhotoStatus').textContent = '';
+  renderWorkMsgPendingPhotos();
+  await renderWorkMessagesView();
+  await renderWorkMessagesEditList();
+}
+
 /* ---------- Copia de seguridad completa (protegida con PIN) ----------
    Exporta TODOS los almacenes de la app (perfiles, documentos, viajes,
    vacaciones, lecturas, coche, etc.) en un único archivo cifrado, pensado
@@ -3176,7 +3392,7 @@ const FULL_BACKUP_STORES = [
   'vacationYears', 'vacationDays', 'holidayDays', 'permisoDays', 'lactanciaDays', 'annotations',
   'readings', 'readingYears',
   'carFuelEntries', 'carFuelYears', 'carInsuranceEntries', 'carGarageEntries', 'vehicles',
-  'workObras', 'workConceptos', 'workObservaciones'
+  'workObras', 'workConceptos', 'workObservaciones', 'workMessages'
 ];
 const FULL_BACKUP_BLOB_FIELDS = {
   documents: 'blob',
@@ -3223,6 +3439,24 @@ async function buildFullBackupBlob(pin){
   const zipEntries = [];
   for (const storeName of FULL_BACKUP_STORES) {
     const records = await dbGetAll(storeName);
+    if (storeName === 'workMessages') {
+      const cleaned = [];
+      for (const r of records) {
+        const { photos, ...rest } = r;
+        const photoMeta = [];
+        for (let i = 0; i < (photos || []).length; i++) {
+          const p = photos[i];
+          if (p.blob) {
+            const bytes = new Uint8Array(await p.blob.arrayBuffer());
+            zipEntries.push({ name: `blobs/workMessages/${r.id}__${i}`, data: bytes });
+          }
+          photoMeta.push({ mimeType: p.mimeType, fileName: p.fileName });
+        }
+        cleaned.push({ ...rest, photoMeta });
+      }
+      dump[storeName] = cleaned;
+      continue;
+    }
     const blobField = FULL_BACKUP_BLOB_FIELDS[storeName];
     if (blobField) {
       const cleaned = [];
@@ -3350,6 +3584,19 @@ async function restoreFullBackupFromFile(file, pin){
 
   for (const storeName of FULL_BACKUP_STORES) {
     const records = dump[storeName] || [];
+    if (storeName === 'workMessages') {
+      for (const r of records) {
+        const { photoMeta, ...rest } = r;
+        const photos = [];
+        for (let i = 0; i < (photoMeta || []).length; i++) {
+          const meta = photoMeta[i];
+          const blobBytes = await readZipEntryBytes(plainBuffer, entries, `blobs/workMessages/${r.id}__${i}`);
+          if (blobBytes) photos.push({ blob: new Blob([blobBytes], { type: meta.mimeType || 'application/octet-stream' }), mimeType: meta.mimeType, fileName: meta.fileName });
+        }
+        await dbPut(storeName, { ...rest, photos });
+      }
+      continue;
+    }
     const blobField = FULL_BACKUP_BLOB_FIELDS[storeName];
     for (const r of records) {
       if (blobField) {
@@ -4637,6 +4884,101 @@ document.getElementById('workObservacionesList').addEventListener('click', async
       await renderWorkObservacionesList(currentConceptoId);
     }
   }
+});
+
+/* ---------- eventos: Mensajes a recordar (bloqueo propio) ---------- */
+document.getElementById('btnGoWorkMessages').addEventListener('click', () => go('work-messages-lock'));
+document.getElementById('btnWorkMessagesBack').addEventListener('click', () => history.back());
+document.getElementById('btnWorkMsgSavePin').addEventListener('click', async () => {
+  const pin = document.getElementById('workMsgPinSetupInput').value.trim();
+  const confirmPin = document.getElementById('workMsgPinSetupConfirm').value.trim();
+  const errorEl = document.getElementById('workMsgPinSetupError');
+  if (pin.length < 4) { errorEl.textContent = 'El PIN debe tener al menos 4 dígitos.'; return; }
+  if (pin !== confirmPin) { errorEl.textContent = 'Los dos PIN no coinciden.'; return; }
+  errorEl.textContent = '';
+  await saveWorkMsgPin(pin);
+  if (await isPlatformAuthenticatorAvailable()) showWorkMsgLockSubview('offer');
+  else go('work-messages');
+});
+document.getElementById('btnWorkMsgEnableBiometric').addEventListener('click', async () => {
+  try { await registerWorkMsgBiometric(); }
+  catch (e) { alert('No se pudo activar la huella/rostro en este dispositivo. Puedes seguir usando el PIN.'); }
+  go('work-messages');
+});
+document.getElementById('btnWorkMsgSkipBiometric').addEventListener('click', () => go('work-messages'));
+document.getElementById('btnWorkMsgUnlockPin').addEventListener('click', async () => {
+  const pin = document.getElementById('workMsgPinUnlockInput').value.trim();
+  const errorEl = document.getElementById('workMsgPinUnlockError');
+  if (await verifyWorkMsgPin(pin)) { errorEl.textContent = ''; go('work-messages'); }
+  else { errorEl.textContent = 'PIN incorrecto.'; document.getElementById('workMsgPinUnlockInput').value = ''; }
+});
+document.getElementById('btnWorkMsgBiometricUnlock').addEventListener('click', async () => {
+  const ok = await unlockWorkMsgWithBiometric();
+  if (ok) go('work-messages');
+  else document.getElementById('workMsgPinUnlockError').textContent = 'No se reconoció la huella/rostro. Prueba con el PIN.';
+});
+document.getElementById('btnWorkMsgLockCancel').addEventListener('click', () => history.back());
+
+/* ---------- eventos: Mensajes a recordar (CRUD) ---------- */
+document.getElementById('btnAddWorkMsgPhotoGallery').addEventListener('click', () => document.getElementById('workMsgPhotoFileInput').click());
+document.getElementById('btnAddWorkMsgPhotoCamera').addEventListener('click', () => document.getElementById('workMsgPhotoCameraInput').click());
+document.getElementById('workMsgPhotoFileInput').addEventListener('change', (e) => {
+  pendingWorkMsgPhotos.push(...Array.from(e.target.files));
+  document.getElementById('workMsgPhotoStatus').textContent = `${pendingWorkMsgPhotos.length} foto(s) añadida(s)`;
+  renderWorkMsgPendingPhotos();
+  e.target.value = '';
+});
+document.getElementById('workMsgPhotoCameraInput').addEventListener('change', (e) => {
+  if (e.target.files[0]) pendingWorkMsgPhotos.push(e.target.files[0]);
+  document.getElementById('workMsgPhotoStatus').textContent = `${pendingWorkMsgPhotos.length} foto(s) añadida(s)`;
+  renderWorkMsgPendingPhotos();
+  e.target.value = '';
+});
+document.getElementById('workMsgPendingPhotos').addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-action="remove-pending-photo"]');
+  if (!btn) return;
+  pendingWorkMsgPhotos.splice(parseInt(btn.dataset.index, 10), 1);
+  document.getElementById('workMsgPhotoStatus').textContent = pendingWorkMsgPhotos.length ? `${pendingWorkMsgPhotos.length} foto(s) añadida(s)` : '';
+  renderWorkMsgPendingPhotos();
+});
+document.getElementById('btnAddWorkMessage').addEventListener('click', async () => {
+  const fecha = document.getElementById('workMsgFecha').value;
+  const descripcion = document.getElementById('workMsgDescripcion').value.trim();
+  if (!fecha || !descripcion) { alert('Indica al menos la fecha y la descripción.'); return; }
+  await addWorkMessage(fecha, descripcion, pendingWorkMsgPhotos);
+  pendingWorkMsgPhotos = [];
+  document.getElementById('workMsgFecha').value = '';
+  document.getElementById('workMsgDescripcion').value = '';
+  document.getElementById('workMsgPhotoStatus').textContent = '';
+  renderWorkMsgPendingPhotos();
+  await renderWorkMessagesView();
+  await renderWorkMessagesEditList();
+});
+document.getElementById('workMessagesEditList').addEventListener('change', async (e) => {
+  const input = e.target.closest('.work-msg-input');
+  if (!input) return;
+  const entry = await dbGet('workMessages', input.dataset.id);
+  if (!entry) return;
+  entry[input.dataset.field] = input.value;
+  await dbPut('workMessages', entry);
+  await renderWorkMessagesView();
+  await renderWorkMessagesEditList();
+});
+document.getElementById('workMessagesEditList').addEventListener('click', async (e) => {
+  const delBtn = e.target.closest('[data-action="delete-work-message"]');
+  if (delBtn) {
+    if (confirm('¿Eliminar este mensaje?')) {
+      await deleteWorkMessage(delBtn.dataset.id);
+      await renderWorkMessagesView();
+      await renderWorkMessagesEditList();
+    }
+  }
+});
+document.getElementById('btnToggleWorkMessagesEdit').addEventListener('click', () => {
+  workMessagesEditMode = !workMessagesEditMode;
+  document.getElementById('workMessagesView').style.display = workMessagesEditMode ? 'none' : 'block';
+  document.getElementById('workMessagesEdit').style.display = workMessagesEditMode ? 'block' : 'none';
+  document.getElementById('btnToggleWorkMessagesEdit').textContent = workMessagesEditMode ? '✅ Cerrar edición' : '✏️ Modificar';
 });
 
 /* ---------- arranque ---------- */
