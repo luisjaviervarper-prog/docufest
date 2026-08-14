@@ -241,6 +241,7 @@
         <button class="btn-outline" id="btnCar">🚗 Coche</button>
         <button class="btn-outline" id="btnWork">🛠 Trabajo</button>
         <button class="btn-outline" id="btnExportFullBackup">💾 Exportar todos los datos</button>
+        <button class="btn-outline" id="btnExportExcel">📊 Exportar a Excel</button>
         <button class="btn-outline" id="btnImportFullBackup">📥 Importar datos</button>
         <input type="file" id="fullBackupImportInput" accept=".dfbackup,application/octet-stream,*/*" style="display:none">
         <button class="btn-outline" id="btnFormatAllData" style="color:var(--accent-crimson); border-color:var(--accent-crimson);">🗑 Formatear todos los datos</button>
@@ -386,9 +387,76 @@
       <h1>Viajes</h1>
     </div>
     <div class="content">
+      <button class="btn-outline" id="btnGoPlaces" style="margin-bottom:10px;">📍 Lugares</button>
       <div id="tripsList"></div>
     </div>
     <button class="fab" id="btnAddTrip" title="Nuevo viaje">＋</button>
+  </section>
+
+  <!-- ===================== LUGARES: INICIO ===================== -->
+  <section id="screen-places-home" class="screen">
+    <div class="topbar">
+      <button class="icon-btn" onclick="history.back()">←</button>
+      <h1>📍 Lugares</h1>
+    </div>
+    <div class="content">
+      <button class="btn-outline" id="btnGoPlacesSpain">🇪🇸 España</button>
+      <button class="btn-outline" id="btnGoPlacesEurope">🇪🇺 Europa</button>
+      <button class="btn-outline" id="btnGoPlacesWorld">🌍 Mundo</button>
+    </div>
+  </section>
+
+  <!-- ===================== LUGARES: ESPAÑA ===================== -->
+  <section id="screen-places-spain" class="screen">
+    <div class="topbar">
+      <button class="icon-btn" onclick="history.back()">←</button>
+      <h1>🇪🇸 España</h1>
+    </div>
+    <div class="content">
+      <button class="btn-outline" id="btnGoPlacesEsCapitales">Capitales de provincia</button>
+      <button class="btn-outline" id="btnGoPlacesEsPueblos">Pueblos y ciudades con encanto</button>
+    </div>
+  </section>
+
+  <!-- ===================== LUGARES: EUROPA ===================== -->
+  <section id="screen-places-europe" class="screen">
+    <div class="topbar">
+      <button class="icon-btn" onclick="history.back()">←</button>
+      <h1>🇪🇺 Europa</h1>
+    </div>
+    <div class="content">
+      <button class="btn-outline" id="btnGoPlacesEuCapitales">Capitales de Europa</button>
+      <button class="btn-outline" id="btnGoPlacesEuCiudades">Ciudades europeas míticas</button>
+    </div>
+  </section>
+
+  <!-- ===================== LUGARES: MUNDO ===================== -->
+  <section id="screen-places-world" class="screen">
+    <div class="topbar">
+      <button class="icon-btn" onclick="history.back()">←</button>
+      <h1>🌍 Mundo</h1>
+    </div>
+    <div class="content">
+      <button class="btn-outline" id="btnGoPlacesMundoCapitales">Capitales del mundo</button>
+      <button class="btn-outline" id="btnGoPlacesMundoCiudades">Ciudades del mundo míticas</button>
+    </div>
+  </section>
+
+  <!-- ===================== LUGARES: CHECKLIST (genérico) ===================== -->
+  <section id="screen-places-checklist" class="screen">
+    <div class="topbar">
+      <button class="icon-btn" onclick="history.back()">←</button>
+      <h1 id="placesChecklistTitle">Lugares</h1>
+    </div>
+    <div class="content">
+      <div class="card-muted" id="placesChecklistProgress" style="text-align:center; margin-bottom:8px;"></div>
+      <div id="placesChecklistList"></div>
+      <div class="tile" style="padding:14px; margin-top:10px;">
+        <label class="field-label">Añadir otro lugar</label>
+        <input type="text" id="placesChecklistNewItem" placeholder="Ej. Un lugar que no esté en la lista">
+        <button class="btn-ember" id="btnAddPlacesChecklistItem" style="margin-top:4px;">＋ Añadir</button>
+      </div>
+    </div>
   </section>
 
   <!-- ===================== DETALLE DE VIAJE ===================== -->
@@ -957,7 +1025,7 @@
 /* ---------- IndexedDB helpers ---------- */
 function openDb(){
   return new Promise((resolve, reject) => {
-    const req = indexedDB.open('docufest_db', 13);
+    const req = indexedDB.open('docufest_db', 14);
     req.onupgradeneeded = (e) => {
       const db = e.target.result;
       if (!db.objectStoreNames.contains('profiles')) {
@@ -1043,6 +1111,10 @@ function openDb(){
       }
       if (!db.objectStoreNames.contains('workMessages')) {
         db.createObjectStore('workMessages', { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains('placesChecklist')) {
+        const s = db.createObjectStore('placesChecklist', { keyPath: 'id' });
+        s.createIndex('category', 'category', { unique: false });
       }
     };
     req.onsuccess = () => resolve(req.result);
@@ -1839,6 +1911,254 @@ async function buildZip(entries){
 
   return new Blob([...localParts, ...centralParts, new Uint8Array(eocd.buffer)], { type: 'application/zip' });
 }
+
+/* ======================================================================
+   EXPORTACIÓN A EXCEL (.xlsx) — genera un libro con una hoja por cada
+   apartado de la app, reutilizando buildZip() ya que un .xlsx es en
+   realidad un .zip de archivos XML (formato OOXML).
+   ====================================================================== */
+function xmlEscape(str){
+  return String(str)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+}
+function xlsxColName(n){
+  let s = '';
+  while (n > 0) {
+    const rem = (n - 1) % 26;
+    s = String.fromCharCode(65 + rem) + s;
+    n = Math.floor((n - 1) / 26);
+  }
+  return s;
+}
+function xlsxColWidthsXml(rows){
+  const widths = [];
+  rows.forEach(row => {
+    row.forEach((val, cIdx) => {
+      const len = (val === null || val === undefined) ? 0 : String(val).length;
+      widths[cIdx] = Math.max(widths[cIdx] || 0, len);
+    });
+  });
+  const colsXml = widths.map((w, i) => {
+    const width = Math.min(Math.max(w + 2, 10), 45);
+    return `<col min="${i + 1}" max="${i + 1}" width="${width}" customWidth="1"/>`;
+  }).join('');
+  return colsXml ? `<cols>${colsXml}</cols>` : '';
+}
+/* Índices de estilo (definidos en styles.xml, ver buildXlsxBlob):
+   0 = normal sin bordes, 1 = cabecera (negrita, fondo color, bordes), 2 = celda de datos (con bordes) */
+function buildXlsxSheetXml(rows, headerRowCount = 1){
+  const numCols = rows.length ? rows[0].length : 0;
+  let rowsXml = '';
+  rows.forEach((row, rIdx) => {
+    const rowNum = rIdx + 1;
+    const isHeader = rIdx < headerRowCount;
+    const styleIdx = isHeader ? 1 : 2;
+    let cellsXml = '';
+    for (let cIdx = 0; cIdx < numCols; cIdx++) {
+      const val = row[cIdx];
+      const ref = xlsxColName(cIdx + 1) + rowNum;
+      if (val === null || val === undefined || val === '') {
+        cellsXml += `<c r="${ref}" s="${styleIdx}"/>`;
+      } else if (typeof val === 'number' && isFinite(val)) {
+        cellsXml += `<c r="${ref}" s="${styleIdx}"><v>${val}</v></c>`;
+      } else {
+        cellsXml += `<c r="${ref}" s="${styleIdx}" t="inlineStr"><is><t xml:space="preserve">${xmlEscape(val)}</t></is></c>`;
+      }
+    }
+    rowsXml += `<row r="${rowNum}">${cellsXml}</row>`;
+  });
+  const colsXml = xlsxColWidthsXml(rows);
+  const freezePane = headerRowCount > 0
+    ? `<sheetViews><sheetView tabSelected="0" workbookViewId="0"><pane ySplit="${headerRowCount}" topLeftCell="A${headerRowCount + 1}" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>`
+    : '';
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">${freezePane}${colsXml}<sheetData>${rowsXml}</sheetData></worksheet>`;
+}
+async function buildXlsxBlob(sheets){
+  const encoder = new TextEncoder();
+  const zipEntries = [];
+
+  const contentTypesOverrides = sheets.map((_, i) => `<Override PartName="/xl/worksheets/sheet${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('');
+  const contentTypes = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+<Default Extension="xml" ContentType="application/xml"/>
+<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
+${contentTypesOverrides}
+</Types>`;
+  zipEntries.push({ name: '[Content_Types].xml', data: encoder.encode(contentTypes) });
+
+  const rootRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
+</Relationships>`;
+  zipEntries.push({ name: '_rels/.rels', data: encoder.encode(rootRels) });
+
+  const sheetTags = sheets.map((s, i) => `<sheet name="${xmlEscape(s.name).slice(0, 31)}" sheetId="${i + 1}" r:id="rId${i + 1}"/>`).join('');
+  const workbookXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+<sheets>${sheetTags}</sheets>
+</workbook>`;
+  zipEntries.push({ name: 'xl/workbook.xml', data: encoder.encode(workbookXml) });
+
+  const stylesRelId = `rId${sheets.length + 1}`;
+  const wbRelsTags = sheets.map((s, i) => `<Relationship Id="rId${i + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i + 1}.xml"/>`).join('');
+  const wbRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+${wbRelsTags}
+<Relationship Id="${stylesRelId}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+</Relationships>`;
+  zipEntries.push({ name: 'xl/_rels/workbook.xml.rels', data: encoder.encode(wbRels) });
+
+  const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+<fonts count="2">
+<font><sz val="11"/><name val="Calibri"/></font>
+<font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
+</fonts>
+<fills count="3">
+<fill><patternFill patternType="none"/></fill>
+<fill><patternFill patternType="gray125"/></fill>
+<fill><patternFill patternType="solid"><fgColor rgb="FFC9A24B"/><bgColor rgb="FFC9A24B"/></patternFill></fill>
+</fills>
+<borders count="2">
+<border><left/><right/><top/><bottom/><diagonal/></border>
+<border><left style="thin"><color rgb="FFB0B0B0"/></left><right style="thin"><color rgb="FFB0B0B0"/></right><top style="thin"><color rgb="FFB0B0B0"/></top><bottom style="thin"><color rgb="FFB0B0B0"/></bottom><diagonal/></border>
+</borders>
+<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+<cellXfs count="3">
+<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
+<xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>
+<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment vertical="center" wrapText="1"/></xf>
+</cellXfs>
+<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
+</styleSheet>`;
+  zipEntries.push({ name: 'xl/styles.xml', data: encoder.encode(stylesXml) });
+
+  sheets.forEach((s, i) => {
+    zipEntries.push({ name: `xl/worksheets/sheet${i + 1}.xml`, data: encoder.encode(buildXlsxSheetXml(s.rows, s.headerRowCount || 1)) });
+  });
+
+  const zipBlob = await buildZip(zipEntries);
+  return new Blob([await zipBlob.arrayBuffer()], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+}
+async function exportAllDataToExcel(){
+  const sheets = [];
+
+  const allTrips = await dbGetAll('trips');
+  const tripNameMap = {};
+  allTrips.forEach(t => tripNameMap[t.id] = t.name || '');
+  const trips = allTrips.filter(t => !t.isDefault);
+  sheets.push({ name: 'Viajes', rows: [['Nombre'], ...trips.map(t => [t.name || ''])] });
+
+  const expenses = await dbGetAll('tripExpenses');
+  sheets.push({ name: 'Gastos viajes', rows: [
+    ['Viaje', 'Concepto', 'Fecha', 'Ubicación', 'Tipo', 'Coste (€)', 'Observaciones'],
+    ...expenses.map(e => [tripNameMap[e.tripId] || '', e.concepto || '', e.fecha || '', e.ubicacion || '', e.tipo || '', Number(e.coste) || 0, e.observaciones || ''])
+  ] });
+
+  const restaurants = await dbGetAll('restaurantEntries');
+  sheets.push({ name: 'Restaurantes', rows: [
+    ['Concepto', 'Fecha', 'País', 'Comunidad', 'Provincia', 'Precio (€)', 'Nº personas', 'Precio/persona (€)', 'Observaciones'],
+    ...restaurants.map(r => [
+      r.concepto || '', r.fecha || '', r.pais || '', r.comunidad || '', r.provincia || '',
+      Number(r.precio) || 0, r.numPersonas || '',
+      Number(r.numPersonas) > 0 ? Math.round((Number(r.precio || 0) / Number(r.numPersonas)) * 100) / 100 : '',
+      r.observaciones || ''
+    ])
+  ] });
+
+  const vac = (await dbGetAll('vacationDays')).map(d => ['Vacaciones', d.dateStr || '']);
+  const hol = (await dbGetAll('holidayDays')).map(d => ['Festivo', d.dateStr || '']);
+  const per = (await dbGetAll('permisoDays')).map(d => ['Permiso', d.dateStr || '']);
+  const lac = (await dbGetAll('lactanciaDays')).map(d => ['Lactancia', d.dateStr || '']);
+  const allDays = [...vac, ...hol, ...per, ...lac].sort((a, b) => (a[1] || '').localeCompare(b[1] || ''));
+  sheets.push({ name: 'Vacaciones-días', rows: [['Tipo', 'Fecha'], ...allDays] });
+
+  const annotations = await dbGetAll('annotations');
+  sheets.push({ name: 'Anotaciones', rows: [
+    ['Fecha inicio', 'Fecha fin', 'Concepto', 'Tiene foto'],
+    ...annotations.map(a => [a.startDate || '', a.endDate || '', a.concepto || '', a.photoBlob ? 'Sí' : 'No'])
+  ] });
+
+  const readings = await dbGetAll('readings');
+  sheets.push({ name: 'Lecturas', rows: [
+    ['ID', 'Título', 'Autor', 'Año escrito', 'Premios', 'Año lectura'],
+    ...readings.map(r => [r.displayId || '', r.titulo || '', r.autor || '', r.anoEscrito || '', r.premios || '', r.yearKey || ''])
+  ] });
+
+  const vehicles = await dbGetAll('vehicles');
+  const vehicleMap = {};
+  vehicles.forEach(v => vehicleMap[v.id] = `${v.marca || ''} ${v.modelo || ''} (${v.matricula || ''})`.trim());
+  sheets.push({ name: 'Vehículos', rows: [
+    ['Matrícula', 'Marca', 'Modelo'],
+    ...vehicles.map(v => [v.matricula || '', v.marca || '', v.modelo || ''])
+  ] });
+
+  const fuel = await dbGetAll('carFuelEntries');
+  sheets.push({ name: 'Combustible', rows: [
+    ['Vehículo', 'Fecha', 'Precio (€)', 'Gasolinera', 'Anotaciones'],
+    ...fuel.map(f => [vehicleMap[f.vehicleId] || '', f.fecha || '', Number(f.precio) || 0, f.gasolinera || '', f.anotaciones || ''])
+  ] });
+
+  const insurance = await dbGetAll('carInsuranceEntries');
+  sheets.push({ name: 'Seguro coche', rows: [
+    ['Vehículo', 'Año', 'Coste (€)', 'Compañía'],
+    ...insurance.map(i => [vehicleMap[i.vehicleId] || '', i.anio || '', Number(i.coste) || 0, i.compania || ''])
+  ] });
+
+  const garage = await dbGetAll('carGarageEntries');
+  sheets.push({ name: 'Taller coche', rows: [
+    ['Vehículo', 'Fecha', 'Concepto', 'Observaciones'],
+    ...garage.map(g => [vehicleMap[g.vehicleId] || '', g.fecha || '', g.concepto || '', g.observaciones || ''])
+  ] });
+
+  const obras = await dbGetAll('workObras');
+  const obraMap = {};
+  obras.forEach(o => obraMap[o.id] = o.nombre || '');
+  sheets.push({ name: 'Obras', rows: [
+    ['Nombre', 'Nº de obra'],
+    ...obras.map(o => [o.nombre || '', o.numeroObra || ''])
+  ] });
+
+  const conceptos = await dbGetAll('workConceptos');
+  sheets.push({ name: 'Checklist obras', rows: [
+    ['Obra', 'ID', 'Concepto', 'Marcado'],
+    ...conceptos.map(c => [obraMap[c.obraId] || '', c.displayId || '', c.concepto || '', c.checked ? 'Sí' : 'No'])
+  ] });
+
+  const conceptoMap = {};
+  conceptos.forEach(c => conceptoMap[c.id] = c.concepto || '');
+  const observaciones = await dbGetAll('workObservaciones');
+  sheets.push({ name: 'Observaciones obra', rows: [
+    ['Concepto', 'Observación'],
+    ...observaciones.map(o => [conceptoMap[o.conceptoId] || '', o.texto || ''])
+  ] });
+
+  const messages = await dbGetAll('workMessages');
+  sheets.push({ name: 'Mensajes a recordar', rows: [
+    ['Fecha', 'Descripción', 'Nº de fotos'],
+    ...messages.map(m => [m.fecha || '', m.descripcion || '', (m.photos || []).length])
+  ] });
+
+  const places = await dbGetAll('placesChecklist');
+  sheets.push({ name: 'Lugares', rows: [
+    ['Categoría', 'Lugar', 'Visitado'],
+    ...places.map(p => [PLACES_TITLES[p.category] || p.category || '', p.nombre || '', p.checked ? 'Sí' : 'No'])
+  ] });
+
+  const blob = await buildXlsxBlob(sheets);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `DocuFest_export_${new Date().toISOString().slice(0, 10)}.xlsx`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+
 async function exportBackup(scopedProfileId){
   const profiles = await dbGetAll('profiles');
   const categories = await dbGetAll('categories');
@@ -1906,6 +2226,7 @@ let carGarageVehicleFilter = 'all';
 let vehiclesEditMode = false;
 let currentObraId = null;
 let currentConceptoId = null;
+let currentPlacesCategory = null;
 let workObrasEditMode = false;
 let workConceptosEditMode = false;
 let workMessagesEditMode = false;
@@ -1924,6 +2245,7 @@ async function applyState(state){
   currentTripId = state.tripId || null;
   currentObraId = state.obraId || null;
   currentConceptoId = state.conceptoId || null;
+  currentPlacesCategory = state.category || null;
   document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
   const el = document.getElementById('screen-' + state.view);
   if (el) el.classList.add('active');
@@ -1950,6 +2272,7 @@ async function applyState(state){
   if (state.view === 'work-concepto-detail') await renderWorkConceptoDetail(currentConceptoId);
   if (state.view === 'work-messages-lock') await bootWorkMsgLockScreen();
   if (state.view === 'work-messages') await renderWorkMessagesScreen();
+  if (state.view === 'places-checklist') await renderPlacesChecklist(state.category, state.title);
 }
 
 /* ---------- render: bienvenida ---------- */
@@ -2459,7 +2782,94 @@ async function renderRestaurantStats(){
   `;
 }
 
-/* ---------- render: Vacaciones ---------- */
+/* ======================================================================
+   VIAJES: Lugares — checklists de capitales/ciudades a visitar, agrupadas
+   en España, Europa y Mundo. Cada categoría se siembra una única vez con
+   una lista predefinida, y el usuario puede marcar visitados y añadir más.
+   ====================================================================== */
+const PLACES_SEED_DATA = {
+  'es-capitales': [
+    'Madrid', 'Barcelona', 'Sevilla', 'Valencia', 'Zaragoza', 'Málaga', 'Bilbao', 'Vitoria-Gasteiz',
+    'Albacete', 'Alicante', 'Almería', 'Oviedo', 'Ávila', 'Badajoz', 'Palma de Mallorca', 'Burgos',
+    'Cáceres', 'Cádiz', 'Santander', 'Castellón de la Plana', 'Ciudad Real', 'Córdoba', 'Cuenca',
+    'Girona', 'Granada', 'Guadalajara', 'San Sebastián', 'Huelva', 'Huesca', 'Jaén', 'Logroño',
+    'Las Palmas de Gran Canaria', 'León', 'Lleida', 'Lugo', 'Murcia', 'Pamplona', 'Ourense',
+    'Palencia', 'Pontevedra', 'Salamanca', 'Segovia', 'Soria', 'Tarragona', 'Santa Cruz de Tenerife',
+    'Teruel', 'Toledo', 'Valladolid', 'Zamora', 'A Coruña', 'Ceuta', 'Melilla'
+  ],
+  'es-pueblos': [
+    'Ronda (Málaga)', 'Setenil de las Bodegas (Cádiz)', 'Frigiliana (Málaga)', 'Mojácar (Almería)',
+    'Peñíscola (Castellón)', 'Sitges (Barcelona)', 'Cadaqués (Girona)', 'Besalú (Girona)',
+    'Santillana del Mar (Cantabria)', 'Comillas (Cantabria)', 'Cudillero (Asturias)',
+    'Combarro (Pontevedra)', 'Albarracín (Teruel)', 'Alquézar (Huesca)', 'Aínsa (Huesca)',
+    'Trujillo (Cáceres)', 'Guadalupe (Cáceres)', 'Zafra (Badajoz)', 'Almagro (Ciudad Real)',
+    'Consuegra (Toledo)', 'Chinchón (Madrid)', 'Pedraza (Segovia)', 'Sepúlveda (Segovia)',
+    'Úbeda (Jaén)', 'Baeza (Jaén)', 'Carmona (Sevilla)', 'Arcos de la Frontera (Cádiz)',
+    'Zahara de la Sierra (Cádiz)', 'Vejer de la Frontera (Cádiz)', 'Morella (Castellón)'
+  ],
+  'eu-capitales': [
+    'Madrid', 'Lisboa', 'París', 'Londres', 'Dublín', 'Ámsterdam', 'Bruselas', 'Luxemburgo',
+    'Berlín', 'Berna', 'Viena', 'Roma', 'Vaduz', 'Mónaco', 'San Marino', 'Ciudad del Vaticano',
+    'Andorra la Vella', 'Copenhague', 'Oslo', 'Estocolmo', 'Helsinki', 'Reikiavik', 'Varsovia',
+    'Praga', 'Bratislava', 'Budapest', 'Liubliana', 'Zagreb', 'Sarajevo', 'Belgrado', 'Podgorica',
+    'Skopie', 'Tirana', 'Pristina', 'Sofía', 'Bucarest', 'Chisináu', 'Kiev', 'Minsk', 'Vilna',
+    'Riga', 'Tallin', 'Moscú', 'Atenas', 'Nicosia', 'Valeta', 'Ankara'
+  ],
+  'eu-ciudades': [
+    'Barcelona', 'Milán', 'Venecia', 'Florencia', 'Nápoles', 'Verona', 'Pisa', 'Turín', 'Bolonia',
+    'Génova', 'Múnich', 'Hamburgo', 'Colonia', 'Fráncfort', 'Dresde', 'Salzburgo', 'Innsbruck',
+    'Zúrich', 'Ginebra', 'Basilea', 'Interlaken', 'Brujas', 'Amberes', 'Róterdam', 'Edimburgo',
+    'Mánchester', 'Liverpool', 'Oporto', 'Split', 'Dubrovnik', 'Cracovia', 'Gdansk', 'Bergen',
+    'Niza', 'Cannes', 'Marsella', 'Burdeos', 'Estrasburgo', 'Colmar', 'San Petersburgo'
+  ],
+  'mundo-capitales': [
+    'Washington D.C.', 'Ottawa', 'Ciudad de México', 'Buenos Aires', 'Brasilia', 'Lima',
+    'Santiago de Chile', 'Bogotá', 'Quito', 'Caracas', 'La Habana', 'Panamá', 'San José (Costa Rica)',
+    'El Cairo', 'Rabat', 'Túnez', 'Argel', 'Trípoli', 'Nairobi', 'Pretoria', 'Abuya', 'Adís Abeba',
+    'Riad', 'Abu Dabi', 'Doha', 'Teherán', 'Ammán', 'Damasco', 'Bagdad', 'Nueva Delhi', 'Pekín',
+    'Tokio', 'Seúl', 'Bangkok', 'Hanói', 'Yakarta', 'Manila', 'Kuala Lumpur', 'Canberra', 'Wellington'
+  ],
+  'mundo-ciudades': [
+    'Nueva York', 'Los Ángeles', 'San Francisco', 'Las Vegas', 'Chicago', 'Miami', 'Toronto',
+    'Vancouver', 'Río de Janeiro', 'São Paulo', 'Cusco', 'Cartagena de Indias', 'Marrakech', 'Fez',
+    'Ciudad del Cabo', 'Zanzíbar', 'Dubái', 'Estambul', 'Shanghái', 'Hong Kong', 'Kioto', 'Osaka',
+    'Chiang Mai', 'Bali (Denpasar)', 'Sídney', 'Melbourne', 'Queenstown', 'Bombay', 'Agra', 'Jaipur',
+    'Benarés', 'Chengdu', "Xi'an", 'Guilin', 'Petra', 'Luxor', 'Asuán', 'Salvador de Bahía',
+    'Medellín', 'Ushuaia'
+  ]
+};
+const PLACES_TITLES = {
+  'es-capitales': 'Capitales de provincia (España)',
+  'es-pueblos': 'Pueblos y ciudades con encanto',
+  'eu-capitales': 'Capitales de Europa',
+  'eu-ciudades': 'Ciudades europeas míticas',
+  'mundo-capitales': 'Capitales del mundo',
+  'mundo-ciudades': 'Ciudades del mundo míticas'
+};
+async function ensurePlacesCategorySeeded(category){
+  const existing = await dbGetAll('placesChecklist', 'category', category);
+  if (existing.length > 0) return;
+  const seedList = PLACES_SEED_DATA[category] || [];
+  for (const nombre of seedList) {
+    await dbPut('placesChecklist', { id: uuid(), category, nombre, checked: false, custom: false, createdAt: Date.now() });
+  }
+}
+async function renderPlacesChecklist(category, title){
+  await ensurePlacesCategorySeeded(category);
+  document.getElementById('placesChecklistTitle').textContent = title || PLACES_TITLES[category] || 'Lugares';
+  document.getElementById('placesChecklistNewItem').value = '';
+  const items = await dbGetAll('placesChecklist', 'category', category);
+  items.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
+  const checkedCount = items.filter(i => i.checked).length;
+  document.getElementById('placesChecklistProgress').textContent = `${checkedCount} / ${items.length} visitados`;
+  document.getElementById('placesChecklistList').innerHTML = items.map(i => `
+    <div class="card" data-id="${i.id}" style="cursor:default; display:flex; align-items:center; gap:10px;">
+      <input type="checkbox" class="places-check" data-id="${i.id}" ${i.checked ? 'checked' : ''} style="width:20px; height:20px; flex-shrink:0;">
+      <span class="card-title" style="flex:1; ${i.checked ? 'text-decoration:line-through; opacity:0.6;' : ''}">${escapeHtml(i.nombre)}</span>
+      <button class="icon-btn danger" data-action="delete-place-item" data-id="${i.id}" style="position:static; padding:4px 8px;">✕</button>
+    </div>
+  `).join('');
+}
 function renderMonthGrid(year, month, sets, editMode){
   const totalDays = daysInMonth(year, month);
   const offset = firstWeekdayMondayIndex(year, month);
@@ -3392,7 +3802,7 @@ const FULL_BACKUP_STORES = [
   'vacationYears', 'vacationDays', 'holidayDays', 'permisoDays', 'lactanciaDays', 'annotations',
   'readings', 'readingYears',
   'carFuelEntries', 'carFuelYears', 'carInsuranceEntries', 'carGarageEntries', 'vehicles',
-  'workObras', 'workConceptos', 'workObservaciones', 'workMessages'
+  'workObras', 'workConceptos', 'workObservaciones', 'workMessages', 'placesChecklist'
 ];
 const FULL_BACKUP_BLOB_FIELDS = {
   documents: 'blob',
@@ -3693,6 +4103,21 @@ document.getElementById('btnExportFullBackup').addEventListener('click', async (
   }
 });
 document.getElementById('btnImportFullBackup').addEventListener('click', () => document.getElementById('fullBackupImportInput').click());
+document.getElementById('btnExportExcel').addEventListener('click', async () => {
+  const btn = document.getElementById('btnExportExcel');
+  const originalText = btn.textContent;
+  btn.textContent = 'Generando Excel...';
+  btn.disabled = true;
+  try {
+    await exportAllDataToExcel();
+  } catch (err) {
+    console.error(err);
+    alert('No se pudo generar el Excel: ' + err.message);
+  } finally {
+    btn.textContent = originalText;
+    btn.disabled = false;
+  }
+});
 document.getElementById('fullBackupImportInput').addEventListener('change', async (e) => {
   const file = e.target.files[0];
   e.target.value = '';
@@ -4058,6 +4483,39 @@ document.addEventListener('visibilitychange', () => {
 
 /* ---------- eventos: viajes ---------- */
 document.getElementById('btnTrips').addEventListener('click', () => go('trips'));
+document.getElementById('btnGoPlaces').addEventListener('click', () => go('places-home'));
+document.getElementById('btnGoPlacesSpain').addEventListener('click', () => go('places-spain'));
+document.getElementById('btnGoPlacesEurope').addEventListener('click', () => go('places-europe'));
+document.getElementById('btnGoPlacesWorld').addEventListener('click', () => go('places-world'));
+document.getElementById('btnGoPlacesEsCapitales').addEventListener('click', () => go('places-checklist', { category: 'es-capitales' }));
+document.getElementById('btnGoPlacesEsPueblos').addEventListener('click', () => go('places-checklist', { category: 'es-pueblos' }));
+document.getElementById('btnGoPlacesEuCapitales').addEventListener('click', () => go('places-checklist', { category: 'eu-capitales' }));
+document.getElementById('btnGoPlacesEuCiudades').addEventListener('click', () => go('places-checklist', { category: 'eu-ciudades' }));
+document.getElementById('btnGoPlacesMundoCapitales').addEventListener('click', () => go('places-checklist', { category: 'mundo-capitales' }));
+document.getElementById('btnGoPlacesMundoCiudades').addEventListener('click', () => go('places-checklist', { category: 'mundo-ciudades' }));
+document.getElementById('btnAddPlacesChecklistItem').addEventListener('click', async () => {
+  const nombre = document.getElementById('placesChecklistNewItem').value.trim();
+  if (!nombre) return;
+  await dbPut('placesChecklist', { id: uuid(), category: currentPlacesCategory, nombre, checked: false, custom: true, createdAt: Date.now() });
+  await renderPlacesChecklist(currentPlacesCategory);
+});
+document.getElementById('placesChecklistList').addEventListener('change', async (e) => {
+  const check = e.target.closest('.places-check');
+  if (!check) return;
+  const item = await dbGet('placesChecklist', check.dataset.id);
+  if (!item) return;
+  item.checked = check.checked;
+  await dbPut('placesChecklist', item);
+  await renderPlacesChecklist(currentPlacesCategory);
+});
+document.getElementById('placesChecklistList').addEventListener('click', async (e) => {
+  const delBtn = e.target.closest('[data-action="delete-place-item"]');
+  if (!delBtn) return;
+  if (confirm('¿Eliminar este lugar de la lista?')) {
+    await dbDelete('placesChecklist', delBtn.dataset.id);
+    await renderPlacesChecklist(currentPlacesCategory);
+  }
+});
 document.getElementById('tripsList').addEventListener('click', async (e) => {
   const delBtn = e.target.closest('[data-action="delete-trip"]');
   if (delBtn) {
