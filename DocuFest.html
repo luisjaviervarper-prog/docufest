@@ -388,6 +388,7 @@
     </div>
     <div class="content">
       <button class="btn-outline" id="btnGoPlaces" style="margin-bottom:10px;">📍 Lugares</button>
+      <button class="btn-outline" id="btnGoOpera" style="margin-bottom:10px;">🎭 Ópera</button>
       <div id="tripsList"></div>
     </div>
     <button class="fab" id="btnAddTrip" title="Nuevo viaje">＋</button>
@@ -456,6 +457,65 @@
         <input type="text" id="placesChecklistNewItem" placeholder="Ej. Un lugar que no esté en la lista">
         <button class="btn-ember" id="btnAddPlacesChecklistItem" style="margin-top:4px;">＋ Añadir</button>
       </div>
+    </div>
+  </section>
+
+  <!-- ===================== ÓPERA ===================== -->
+  <section id="screen-opera" class="screen">
+    <div class="topbar">
+      <button class="icon-btn" onclick="history.back()">←</button>
+      <h1>🎭 Ópera</h1>
+    </div>
+    <div class="content">
+      <button class="btn-outline" id="btnToggleOperaAddForm">＋ Nueva ópera vista</button>
+      <div id="operaAddForm" style="display:none;">
+        <div class="tile" style="padding:14px;">
+          <label class="field-label">Obra representada</label>
+          <select id="operaObraSelect"></select>
+
+          <div id="operaNewWorkFields" style="display:none;">
+            <label class="field-label">Título de la nueva obra</label>
+            <input type="text" id="operaNewWorkTitulo" placeholder="Ej. Tosca">
+            <label class="field-label">Autor</label>
+            <input type="text" id="operaNewWorkAutor" placeholder="Ej. Giacomo Puccini">
+            <label class="field-label">Año en que se publicó</label>
+            <input type="text" id="operaNewWorkAnio" placeholder="Ej. 1900">
+            <label class="field-label">Minihistoria</label>
+            <input type="text" id="operaNewWorkMinihistoria" placeholder="Breve resumen del argumento">
+            <button class="btn-outline" id="btnSaveOperaNewWork" style="margin-bottom:12px;">Guardar obra en el listado</button>
+          </div>
+
+          <div class="ficha-card" id="operaWorkFicha" style="display:none;"></div>
+
+          <label class="field-label">Fecha (si la sabes)</label>
+          <input type="date" id="operaFecha">
+          <label class="field-label">O, si no recuerdas la fecha exacta, solo el año</label>
+          <input type="text" id="operaAnio" inputmode="numeric" placeholder="Ej. 2019">
+
+          <label class="field-label">En qué teatro fue</label>
+          <select id="operaTeatroSelect"></select>
+          <div id="operaNewTheaterFields" style="display:none;">
+            <label class="field-label">Nombre del teatro</label>
+            <input type="text" id="operaNewTheaterNombre" placeholder="Ej. Teatro Colón">
+            <label class="field-label">Ciudad</label>
+            <input type="text" id="operaNewTheaterCiudad" placeholder="Ej. Buenos Aires">
+            <label class="field-label">País</label>
+            <input type="text" id="operaNewTheaterPais" placeholder="Ej. Argentina">
+          </div>
+
+          <label class="field-label">Observaciones</label>
+          <input type="text" id="operaObservaciones" placeholder="Opcional">
+
+          <button class="btn-ember" id="btnAddOperaEntry" style="margin-top:4px;">＋ Añadir</button>
+        </div>
+      </div>
+
+      <div id="operaView"></div>
+      <div id="operaEdit" style="display:none;">
+        <button class="btn-outline" id="btnOperaShowAllEdit" style="display:none; margin-bottom:8px;">← Ver todas</button>
+        <div id="operaEditList"></div>
+      </div>
+      <button class="btn-outline" id="btnToggleOperaEdit">✏️ Modificar</button>
     </div>
   </section>
 
@@ -1014,6 +1074,17 @@
     </div>
   </div>
 
+  <!-- ===================== MODAL: FICHA DE ÓPERA ===================== -->
+  <div class="modal-overlay" id="modalOperaFicha">
+    <div class="modal-sheet">
+      <div class="modal-header">
+        <h2>Ficha de la obra</h2>
+        <button class="icon-btn" id="modalOperaFichaClose">✕</button>
+      </div>
+      <div id="modalOperaFichaBody"></div>
+    </div>
+  </div>
+
 <script>
 /* ======================================================================
    DocuFest — app HTML autocontenida (sin dependencias externas).
@@ -1025,7 +1096,7 @@
 /* ---------- IndexedDB helpers ---------- */
 function openDb(){
   return new Promise((resolve, reject) => {
-    const req = indexedDB.open('docufest_db', 14);
+    const req = indexedDB.open('docufest_db', 15);
     req.onupgradeneeded = (e) => {
       const db = e.target.result;
       if (!db.objectStoreNames.contains('profiles')) {
@@ -1115,6 +1186,13 @@ function openDb(){
       if (!db.objectStoreNames.contains('placesChecklist')) {
         const s = db.createObjectStore('placesChecklist', { keyPath: 'id' });
         s.createIndex('category', 'category', { unique: false });
+      }
+      if (!db.objectStoreNames.contains('operaWorks')) {
+        db.createObjectStore('operaWorks', { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains('operaEntries')) {
+        const s = db.createObjectStore('operaEntries', { keyPath: 'id' });
+        s.createIndex('workId', 'workId', { unique: false });
       }
     };
     req.onsuccess = () => resolve(req.result);
@@ -2148,6 +2226,17 @@ async function exportAllDataToExcel(){
     ...places.map(p => [PLACES_TITLES[p.category] || p.category || '', p.nombre || '', p.checked ? 'Sí' : 'No'])
   ] });
 
+  const operaWorksAll = await dbGetAll('operaWorks');
+  const operaWorkMap = Object.fromEntries(operaWorksAll.map(w => [w.id, w]));
+  const operaEntriesAll = await dbGetAll('operaEntries');
+  sheets.push({ name: 'Ópera', rows: [
+    ['Obra', 'Autor', 'Año publicación', 'Fecha', 'Año representación', 'Teatro', 'Ciudad', 'País', 'Observaciones'],
+    ...operaEntriesAll.map(e => {
+      const w = operaWorkMap[e.workId] || {};
+      return [w.obra || '', w.autor || '', w.anioPublicacion || '', e.fecha || '', e.anio || '', e.teatro || '', e.ciudad || '', e.pais || '', e.observaciones || ''];
+    })
+  ] });
+
   const blob = await buildXlsxBlob(sheets);
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -2231,6 +2320,8 @@ let workObrasEditMode = false;
 let workConceptosEditMode = false;
 let workMessagesEditMode = false;
 let pendingWorkMsgPhotos = [];
+let operaEditMode = false;
+let singleEditOperaId = null;
 
 function go(view, params = {}){
   const state = { view, ...params };
@@ -2256,6 +2347,7 @@ async function applyState(state){
   if (state.view === 'category-detail') await renderCategoryDetail(currentCategoryId);
   if (state.view === 'search') await renderSearch(state.scopedProfileId || null);
   if (state.view === 'trips') await renderTrips();
+  if (state.view === 'opera') await renderOperaScreen();
   if (state.view === 'trip-detail') await renderTripDetail(currentTripId);
   if (state.view === 'restaurant-stats') await renderRestaurantStats();
   if (state.view === 'vacations') await renderVacationScreen(currentVacationYear);
@@ -2780,6 +2872,228 @@ async function renderRestaurantStats(){
       `;
     }).join('')}
   `;
+}
+
+/* ======================================================================
+   ÓPERA — óperas vistas dentro de Viajes. Cada ópera vista referencia
+   una "obra" de un pequeño catálogo (con ficha: autor, año, minihistoria)
+   que se puede ampliar libremente, y un teatro (de una lista predefinida
+   de teatros de ópera, o uno nuevo escrito a mano).
+   ====================================================================== */
+const OPERA_THEATERS = [
+  { teatro: 'Teatro alla Scala', ciudad: 'Milán', pais: 'Italia' },
+  { teatro: 'Palais Garnier', ciudad: 'París', pais: 'Francia' },
+  { teatro: 'Opéra Bastille', ciudad: 'París', pais: 'Francia' },
+  { teatro: 'Wiener Staatsoper', ciudad: 'Viena', pais: 'Austria' },
+  { teatro: 'Royal Opera House (Covent Garden)', ciudad: 'Londres', pais: 'Reino Unido' },
+  { teatro: 'Teatro Real', ciudad: 'Madrid', pais: 'España' },
+  { teatro: 'Gran Teatre del Liceu', ciudad: 'Barcelona', pais: 'España' },
+  { teatro: 'Palacio de la Ópera', ciudad: 'A Coruña', pais: 'España' },
+  { teatro: 'Palau de les Arts Reina Sofía', ciudad: 'Valencia', pais: 'España' },
+  { teatro: 'Bayreuther Festspielhaus', ciudad: 'Bayreuth', pais: 'Alemania' },
+  { teatro: 'Semperoper', ciudad: 'Dresde', pais: 'Alemania' },
+  { teatro: 'Bayerische Staatsoper', ciudad: 'Múnich', pais: 'Alemania' },
+  { teatro: 'Staatsoper Unter den Linden', ciudad: 'Berlín', pais: 'Alemania' },
+  { teatro: 'Teatro San Carlo', ciudad: 'Nápoles', pais: 'Italia' },
+  { teatro: 'Teatro La Fenice', ciudad: 'Venecia', pais: 'Italia' },
+  { teatro: 'Teatro Massimo', ciudad: 'Palermo', pais: 'Italia' },
+  { teatro: 'Národní divadlo (Teatro Nacional)', ciudad: 'Praga', pais: 'República Checa' },
+  { teatro: 'Magyar Állami Operaház', ciudad: 'Budapest', pais: 'Hungría' },
+  { teatro: 'Teatr Wielki', ciudad: 'Varsovia', pais: 'Polonia' },
+  { teatro: 'Den Norske Opera & Ballett', ciudad: 'Oslo', pais: 'Noruega' },
+  { teatro: 'Kungliga Operan', ciudad: 'Estocolmo', pais: 'Suecia' },
+];
+const CUSTOM_OPERA_THEATERS_KEY = 'docufest_custom_opera_theaters';
+function getCustomOperaTheaters(){
+  try { return JSON.parse(localStorage.getItem(CUSTOM_OPERA_THEATERS_KEY) || '[]'); }
+  catch (e) { return []; }
+}
+function addCustomOperaTheater(theater){
+  const list = getCustomOperaTheaters();
+  if (!list.some(t => t.teatro === theater.teatro)) {
+    list.push(theater);
+    localStorage.setItem(CUSTOM_OPERA_THEATERS_KEY, JSON.stringify(list));
+  }
+}
+function allOperaTheatersSorted(){
+  const merged = [...OPERA_THEATERS, ...getCustomOperaTheaters()];
+  const seen = new Set();
+  const unique = merged.filter(t => (seen.has(t.teatro) ? false : (seen.add(t.teatro), true)));
+  return unique.sort((a, b) => a.teatro.localeCompare(b.teatro, 'es'));
+}
+function operaTheaterKey(t){ return `${t.teatro}||${t.ciudad || ''}||${t.pais || ''}`; }
+function buildOperaTheaterOptionsHtml(selectedKey){
+  const opts = allOperaTheatersSorted().map(t => {
+    const key = operaTheaterKey(t);
+    const label = [t.teatro, [t.ciudad, t.pais].filter(Boolean).join(', ')].filter(Boolean).join(' — ');
+    return `<option value="${escapeHtml(key)}" ${key === selectedKey ? 'selected' : ''}>${escapeHtml(label)}</option>`;
+  }).join('');
+  return opts + `<option value="__new__" ${selectedKey === '__new__' ? 'selected' : ''}>➕ Otro teatro (escribir)…</option>`;
+}
+
+const DEFAULT_OPERA_WORKS = [
+  {
+    obra: 'Aida', autor: 'Giuseppe Verdi', anioPublicacion: '1871',
+    minihistoria: 'Ambientada en el Antiguo Egipto. Aida, princesa etíope esclavizada, y el guerrero egipcio Radamés se aman en secreto, aunque él está prometido a la princesa Amneris. La guerra entre Egipto y Etiopía y los celos de Amneris llevan a Radamés a ser condenado a morir sepultado vivo, y Aida decide compartir su destino.'
+  },
+  {
+    obra: 'La Traviata', autor: 'Giuseppe Verdi', anioPublicacion: '1853',
+    minihistoria: 'Basada en "La dama de las camelias" de Dumas hijo. Violetta Valéry, una cortesana parisina, renuncia a su vida de lujo por amor a Alfredo Germont, pero el padre de él le pide que lo abandone para no manchar el honor familiar. Violetta se sacrifica y muere de tuberculosis tras reencontrarse brevemente con Alfredo.'
+  },
+  {
+    obra: 'Norma', autor: 'Vincenzo Bellini', anioPublicacion: '1831',
+    minihistoria: 'En la Galia ocupada por Roma, la sacerdotisa druida Norma mantiene en secreto una relación con el procónsul romano Polión, con quien ha tenido hijos. Al descubrir que él ama a una sacerdotisa más joven, Norma se debate entre la venganza y el sacrificio, y termina entregándose a la hoguera junto a Polión.'
+  },
+  {
+    obra: 'Roberto Devereux', autor: 'Gaetano Donizetti', anioPublicacion: '1837',
+    minihistoria: 'Última ópera de la trilogía "Tudor" de Donizetti. Isabel I de Inglaterra ama en secreto a Roberto Devereux, conde de Essex, pero este ama a la duquesa de Nottingham, esposa de su mejor amigo. Acusado de traición, Devereux es ejecutado, y la reina queda devastada al descubrir la verdad demasiado tarde.'
+  },
+  {
+    obra: 'Pelléas et Mélisande', autor: 'Claude Debussy', anioPublicacion: '1902',
+    minihistoria: 'Ópera simbolista basada en la obra de Maeterlinck. Golaud encuentra en el bosque a la misteriosa Mélisande y se casa con ella, pero esta se enamora de Pelléas, hermanastro de Golaud. Los celos de Golaud desembocan en tragedia al descubrir la relación entre ambos.'
+  },
+  {
+    obra: 'Madama Butterfly', autor: 'Giacomo Puccini', anioPublicacion: '1904',
+    minihistoria: 'En Nagasaki, la joven Cio-Cio-San (Madama Butterfly) se casa con el oficial naval estadounidense Pinkerton, quien la abandona tras la boda. Ella lo espera fielmente durante años, pero cuando él regresa con su nueva esposa americana, Butterfly, desesperada, se quita la vida.'
+  },
+];
+async function ensureOperaWorksSeed(){
+  const works = await dbGetAll('operaWorks');
+  if (works.length === 0) {
+    for (const w of DEFAULT_OPERA_WORKS) {
+      await dbPut('operaWorks', { id: uuid(), ...w, isDefault: true, createdAt: Date.now() });
+    }
+  }
+}
+async function getOperaWorksSorted(){
+  const works = await dbGetAll('operaWorks');
+  return works.sort((a, b) => (a.obra || '').localeCompare(b.obra || '', 'es'));
+}
+async function addOperaWork(data){
+  const work = { id: uuid(), ...data, isDefault: false, createdAt: Date.now() };
+  await dbPut('operaWorks', work);
+  return work;
+}
+function buildOperaWorkOptionsHtml(works, selectedId){
+  const opts = works.map(w =>
+    `<option value="${w.id}" ${w.id === selectedId ? 'selected' : ''}>${escapeHtml(w.obra)}</option>`
+  ).join('');
+  return opts + `<option value="__new__" ${selectedId === '__new__' ? 'selected' : ''}>➕ Añadir obra nueva…</option>`;
+}
+function operaWorkFichaHtml(work){
+  if (!work) return '<p class="help-text">Sin ficha disponible.</p>';
+  return `
+    <div class="field-row-view"><span class="field-row-label">Obra</span><span class="field-row-value">${escapeHtml(work.obra || '—')}</span></div>
+    <div class="field-row-view"><span class="field-row-label">Autor</span><span class="field-row-value">${escapeHtml(work.autor || '—')}</span></div>
+    <div class="field-row-view"><span class="field-row-label">Año de publicación</span><span class="field-row-value">${escapeHtml(work.anioPublicacion || '—')}</span></div>
+    <div class="field-row-view" style="flex-direction:column; align-items:flex-start;"><span class="field-row-label">Minihistoria</span><span class="field-row-value" style="text-align:left; max-width:100%; margin-top:4px;">${escapeHtml(work.minihistoria || '—')}</span></div>
+  `;
+}
+async function addOperaEntry(data){
+  const entry = { id: uuid(), ...data, createdAt: Date.now() };
+  await dbPut('operaEntries', entry);
+  return entry;
+}
+async function updateOperaEntry(entry){ await dbPut('operaEntries', entry); }
+async function deleteOperaEntry(id){ await dbDelete('operaEntries', id); }
+function operaDateLabel(entry){
+  if (entry.fecha) return formatDateRange(entry.fecha, entry.fecha);
+  if (entry.anio) return `Año: ${entry.anio}`;
+  return 'Fecha desconocida';
+}
+function sortOperaEntries(entries){
+  return entries.sort((a, b) => {
+    const ka = a.fecha || (a.anio ? `${a.anio}-00-00` : '');
+    const kb = b.fecha || (b.anio ? `${b.anio}-00-00` : '');
+    if (ka !== kb) return kb.localeCompare(ka);
+    return (b.createdAt || 0) - (a.createdAt || 0);
+  });
+}
+
+function populateOperaAddForm(works){
+  document.getElementById('operaObraSelect').innerHTML = buildOperaWorkOptionsHtml(works, works[0] ? works[0].id : '__new__');
+  document.getElementById('operaTeatroSelect').innerHTML = buildOperaTheaterOptionsHtml();
+  document.getElementById('operaNewWorkFields').style.display = 'none';
+  document.getElementById('operaNewTheaterFields').style.display = 'none';
+  updateOperaWorkFichaPreview(works, works[0] ? works[0].id : '__new__');
+}
+function updateOperaWorkFichaPreview(works, workId){
+  const ficha = document.getElementById('operaWorkFicha');
+  if (!workId || workId === '__new__') { ficha.style.display = 'none'; ficha.innerHTML = ''; return; }
+  const work = works.find(w => w.id === workId);
+  ficha.style.display = 'block';
+  ficha.innerHTML = operaWorkFichaHtml(work);
+}
+async function renderOperaScreen(){
+  await ensureOperaWorksSeed();
+  operaEditMode = false;
+  singleEditOperaId = null;
+  document.getElementById('operaView').style.display = 'block';
+  document.getElementById('operaEdit').style.display = 'none';
+  document.getElementById('btnToggleOperaEdit').textContent = '✏️ Modificar';
+  document.getElementById('operaAddForm').style.display = 'none';
+  document.getElementById('btnToggleOperaAddForm').textContent = '＋ Nueva ópera vista';
+  const works = await getOperaWorksSorted();
+  populateOperaAddForm(works);
+  await renderOperaView();
+  await renderOperaEditList();
+}
+async function renderOperaView(){
+  const works = await getOperaWorksSorted();
+  const workMap = Object.fromEntries(works.map(w => [w.id, w]));
+  const entries = sortOperaEntries(await dbGetAll('operaEntries'));
+  const container = document.getElementById('operaView');
+  if (entries.length === 0) { container.innerHTML = '<p class="help-text">Sin óperas añadidas todavía.</p>'; return; }
+  container.innerHTML = entries.map(e => {
+    const work = workMap[e.workId];
+    const lugar = [e.teatro, [e.ciudad, e.pais].filter(Boolean).join(', ')].filter(Boolean).join(' — ');
+    return `
+      <div class="card" data-id="${e.id}">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
+          <span class="card-title">${escapeHtml(work ? work.obra : 'Obra sin especificar')}</span>
+          <div style="display:flex; align-items:center; gap:2px; flex-shrink:0;">
+            <button class="icon-btn" data-action="opera-ficha" data-workid="${e.workId || ''}" style="font-size:16px; padding:2px 4px;" title="Ver ficha de la obra">ℹ️</button>
+            <button class="icon-btn" data-action="edit-opera" data-id="${e.id}" style="font-size:16px; padding:2px 4px;" title="Modificar">✏️</button>
+          </div>
+        </div>
+        <div class="card-muted">${escapeHtml(lugar || 'Teatro sin especificar')}</div>
+        <div class="card-muted">${escapeHtml(operaDateLabel(e))}</div>
+        ${e.observaciones ? `<div class="card-muted" style="margin-top:4px;">${escapeHtml(e.observaciones)}</div>` : ''}
+      </div>
+    `;
+  }).join('');
+}
+async function renderOperaEditList(){
+  const works = await getOperaWorksSorted();
+  let entries = sortOperaEntries(await dbGetAll('operaEntries'));
+  if (singleEditOperaId) entries = entries.filter(e => e.id === singleEditOperaId);
+  document.getElementById('btnOperaShowAllEdit').style.display = singleEditOperaId ? 'block' : 'none';
+  document.getElementById('operaEditList').innerHTML = entries.map(e => `
+    <div class="card" data-id="${e.id}" style="cursor:default;">
+      <button class="icon-btn danger" data-action="delete-opera" data-id="${e.id}">✕</button>
+      <label class="field-label">Obra representada</label>
+      <select class="opera-input" data-field="workId" data-id="${e.id}">
+        ${works.map(w => `<option value="${w.id}" ${w.id === e.workId ? 'selected' : ''}>${escapeHtml(w.obra)}</option>`).join('')}
+      </select>
+      <label class="field-label">Fecha (si la sabes)</label>
+      <input type="date" class="opera-input" data-field="fecha" data-id="${e.id}" value="${e.fecha || ''}">
+      <label class="field-label">O solo el año</label>
+      <input type="text" class="opera-input" data-field="anio" data-id="${e.id}" inputmode="numeric" value="${escapeHtml(e.anio || '')}">
+      <label class="field-label">Teatro</label>
+      <input type="text" class="opera-input" data-field="teatro" data-id="${e.id}" value="${escapeHtml(e.teatro || '')}">
+      <label class="field-label">Ciudad</label>
+      <input type="text" class="opera-input" data-field="ciudad" data-id="${e.id}" value="${escapeHtml(e.ciudad || '')}">
+      <label class="field-label">País</label>
+      <input type="text" class="opera-input" data-field="pais" data-id="${e.id}" value="${escapeHtml(e.pais || '')}">
+      <label class="field-label">Observaciones</label>
+      <input type="text" class="opera-input" data-field="observaciones" data-id="${e.id}" value="${escapeHtml(e.observaciones || '')}">
+    </div>
+  `).join('');
+}
+async function showOperaFichaModal(workId){
+  const work = workId ? await dbGet('operaWorks', workId) : null;
+  document.getElementById('modalOperaFichaBody').innerHTML = operaWorkFichaHtml(work);
+  document.getElementById('modalOperaFicha').classList.add('active');
 }
 
 /* ======================================================================
@@ -3802,7 +4116,8 @@ const FULL_BACKUP_STORES = [
   'vacationYears', 'vacationDays', 'holidayDays', 'permisoDays', 'lactanciaDays', 'annotations',
   'readings', 'readingYears',
   'carFuelEntries', 'carFuelYears', 'carInsuranceEntries', 'carGarageEntries', 'vehicles',
-  'workObras', 'workConceptos', 'workObservaciones', 'workMessages', 'placesChecklist'
+  'workObras', 'workConceptos', 'workObservaciones', 'workMessages', 'placesChecklist',
+  'operaWorks', 'operaEntries'
 ];
 const FULL_BACKUP_BLOB_FIELDS = {
   documents: 'blob',
@@ -4794,6 +5109,134 @@ document.getElementById('btnToggleRestaurantAddForm').addEventListener('click', 
   form.style.display = showing ? 'none' : 'block';
   document.getElementById('btnToggleRestaurantAddForm').textContent = showing ? '＋ Nuevo restaurante' : '✕ Cerrar formulario';
 });
+/* ---------- eventos: Ópera ---------- */
+document.getElementById('btnGoOpera').addEventListener('click', () => go('opera'));
+
+document.getElementById('btnToggleOperaAddForm').addEventListener('click', () => {
+  const form = document.getElementById('operaAddForm');
+  const showing = form.style.display !== 'none';
+  form.style.display = showing ? 'none' : 'block';
+  document.getElementById('btnToggleOperaAddForm').textContent = showing ? '＋ Nueva ópera vista' : '✕ Cerrar formulario';
+});
+
+document.getElementById('operaObraSelect').addEventListener('change', async (e) => {
+  const works = await getOperaWorksSorted();
+  const value = e.target.value;
+  document.getElementById('operaNewWorkFields').style.display = value === '__new__' ? 'block' : 'none';
+  updateOperaWorkFichaPreview(works, value);
+});
+
+document.getElementById('btnSaveOperaNewWork').addEventListener('click', async () => {
+  const obra = document.getElementById('operaNewWorkTitulo').value.trim();
+  const autor = document.getElementById('operaNewWorkAutor').value.trim();
+  const anioPublicacion = document.getElementById('operaNewWorkAnio').value.trim();
+  const minihistoria = document.getElementById('operaNewWorkMinihistoria').value.trim();
+  if (!obra) { alert('Escribe al menos el título de la obra.'); return; }
+  const work = await addOperaWork({ obra, autor, anioPublicacion, minihistoria });
+  document.getElementById('operaNewWorkTitulo').value = '';
+  document.getElementById('operaNewWorkAutor').value = '';
+  document.getElementById('operaNewWorkAnio').value = '';
+  document.getElementById('operaNewWorkMinihistoria').value = '';
+  document.getElementById('operaNewWorkFields').style.display = 'none';
+  const works = await getOperaWorksSorted();
+  document.getElementById('operaObraSelect').innerHTML = buildOperaWorkOptionsHtml(works, work.id);
+  updateOperaWorkFichaPreview(works, work.id);
+  await renderOperaEditList();
+});
+
+document.getElementById('operaTeatroSelect').addEventListener('change', (e) => {
+  document.getElementById('operaNewTheaterFields').style.display = e.target.value === '__new__' ? 'block' : 'none';
+});
+
+document.getElementById('btnAddOperaEntry').addEventListener('click', async () => {
+  const workId = document.getElementById('operaObraSelect').value;
+  if (!workId || workId === '__new__') { alert('Selecciona una obra, o guarda primero la obra nueva.'); return; }
+  const fecha = document.getElementById('operaFecha').value;
+  const anio = document.getElementById('operaAnio').value.trim();
+  const teatroValue = document.getElementById('operaTeatroSelect').value;
+  let teatro, ciudad, pais;
+  if (teatroValue === '__new__') {
+    teatro = document.getElementById('operaNewTheaterNombre').value.trim();
+    ciudad = document.getElementById('operaNewTheaterCiudad').value.trim();
+    pais = document.getElementById('operaNewTheaterPais').value.trim();
+    if (!teatro) { alert('Escribe al menos el nombre del teatro.'); return; }
+    addCustomOperaTheater({ teatro, ciudad, pais });
+  } else {
+    const [t, c, p] = teatroValue.split('||');
+    teatro = t; ciudad = c; pais = p;
+  }
+  const observaciones = document.getElementById('operaObservaciones').value.trim();
+  await addOperaEntry({ workId, fecha, anio, teatro, ciudad, pais, observaciones });
+
+  document.getElementById('operaFecha').value = '';
+  document.getElementById('operaAnio').value = '';
+  document.getElementById('operaNewTheaterNombre').value = '';
+  document.getElementById('operaNewTheaterCiudad').value = '';
+  document.getElementById('operaNewTheaterPais').value = '';
+  document.getElementById('operaNewTheaterFields').style.display = 'none';
+  document.getElementById('operaObservaciones').value = '';
+  document.getElementById('operaTeatroSelect').innerHTML = buildOperaTheaterOptionsHtml();
+  await renderOperaView();
+  await renderOperaEditList();
+});
+
+document.getElementById('operaView').addEventListener('click', async (e) => {
+  const fichaBtn = e.target.closest('[data-action="opera-ficha"]');
+  if (fichaBtn) { await showOperaFichaModal(fichaBtn.dataset.workid); return; }
+  const editBtn = e.target.closest('[data-action="edit-opera"]');
+  if (editBtn) {
+    singleEditOperaId = editBtn.dataset.id;
+    operaEditMode = true;
+    document.getElementById('operaView').style.display = 'none';
+    document.getElementById('operaEdit').style.display = 'block';
+    document.getElementById('btnToggleOperaEdit').textContent = '✅ Cerrar edición';
+    await renderOperaEditList();
+  }
+});
+
+document.getElementById('btnOperaShowAllEdit').addEventListener('click', async () => {
+  singleEditOperaId = null;
+  await renderOperaEditList();
+});
+
+document.getElementById('btnToggleOperaEdit').addEventListener('click', async () => {
+  operaEditMode = !operaEditMode;
+  singleEditOperaId = null;
+  document.getElementById('operaView').style.display = operaEditMode ? 'none' : 'block';
+  document.getElementById('operaEdit').style.display = operaEditMode ? 'block' : 'none';
+  document.getElementById('btnToggleOperaEdit').textContent = operaEditMode ? '✅ Cerrar edición' : '✏️ Modificar';
+  if (operaEditMode) await renderOperaEditList();
+});
+
+document.getElementById('operaEditList').addEventListener('change', async (e) => {
+  const input = e.target.closest('.opera-input');
+  if (!input) return;
+  const entry = await dbGet('operaEntries', input.dataset.id);
+  if (!entry) return;
+  entry[input.dataset.field] = input.value;
+  await updateOperaEntry(entry);
+  await renderOperaView();
+});
+
+document.getElementById('operaEditList').addEventListener('click', async (e) => {
+  const delBtn = e.target.closest('[data-action="delete-opera"]');
+  if (delBtn) {
+    if (confirm('¿Eliminar esta ópera vista?')) {
+      await deleteOperaEntry(delBtn.dataset.id);
+      singleEditOperaId = null;
+      await renderOperaView();
+      await renderOperaEditList();
+    }
+  }
+});
+
+document.getElementById('modalOperaFichaClose').addEventListener('click', () => {
+  document.getElementById('modalOperaFicha').classList.remove('active');
+});
+document.getElementById('modalOperaFicha').addEventListener('click', (e) => {
+  if (e.target.id === 'modalOperaFicha') document.getElementById('modalOperaFicha').classList.remove('active');
+});
+
 document.getElementById('btnRestPrevYear').addEventListener('click', async () => {
   currentRestaurantYear--;
   updateRestaurantYearLabel();
