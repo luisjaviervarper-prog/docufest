@@ -1652,11 +1652,13 @@ function buildSheetXml(rows){
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>${rowsXml}</sheetData></worksheet>`;
 }
 /* Genera el blob .xlsx de Lecturas y su nombre de archivo. Devuelve null
-   (tras avisar con alert) si no hay lecturas que exportar. Lo usan tanto
-   la descarga normal como el botón de compartir por WhatsApp. */
-async function buildReadingsXlsxFile(){
+   si no hay lecturas que exportar (avisando con alert salvo que se pida
+   silencio, para cuando se llama en segundo plano). Lo usan tanto la
+   descarga normal como el botón de compartir por WhatsApp. */
+async function buildReadingsXlsxFile(opts){
+  const silent = !!(opts && opts.silent);
   const all = await dbGetAll('readings');
-  if (all.length === 0) { alert('No hay lecturas para exportar todavía.'); return null; }
+  if (all.length === 0) { if (!silent) alert('No hay lecturas para exportar todavía.'); return null; }
   const buckets = await dbGetAll('readingYears');
   const yearKeys = sortReadingYearKeys(buckets.map(b => b.yearKey));
   const orderIndex = Object.fromEntries(yearKeys.map((k, i) => [k, i]));
@@ -1697,6 +1699,31 @@ async function exportReadingsToXlsx(){
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+
+/* ---------- Caché en memoria del Excel de Lecturas para compartir ----------
+   Safari/iOS (y algunos Android) solo abren el diálogo nativo de compartir
+   si navigator.share() se llama en el mismo instante del toque, sin ningún
+   "await" antes en medio; si hay que esperar a leer la base de datos y
+   generar el archivo primero, consideran que ya no hay "gesto del usuario"
+   y lo bloquean (eso es el "no me da permiso"). Para evitarlo, se regenera
+   el archivo en segundo plano cada vez que se entra en la pantalla de
+   Lecturas, y el botón de compartir usa esa copia ya lista al instante. */
+let readingsXlsxCache = null; // { file: File, builtAt: number }
+async function refreshReadingsXlsxCache(){
+  try {
+    const built = await buildReadingsXlsxFile({ silent: true });
+    if (!built) { readingsXlsxCache = null; return; }
+    readingsXlsxCache = {
+      file: new File([built.blob], built.filename, {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      }),
+      builtAt: Date.now()
+    };
+  } catch (err) {
+    console.error('No se pudo pre-generar el Excel de Lecturas:', err);
+    readingsXlsxCache = null;
+  }
 }
 
 /* Comparte el Excel de Lecturas usando el share sheet nativo del sistema
@@ -3400,6 +3427,7 @@ async function renderReadingYears(){
       <div class="card-muted">${counts[k] || 0} libro(s)</div>
     </div>
   `).join('');
+  refreshReadingsXlsxCache(); // en segundo plano, no bloquea el render
 }
 async function renderReadingsTableView(yearKey){
   const all = await dbGetAll('readings');
@@ -5455,6 +5483,27 @@ document.getElementById('btnExportReadingsExcel').addEventListener('click', asyn
 document.getElementById('btnShareReadingsExcelWhatsapp').addEventListener('click', async () => {
   const btn = document.getElementById('btnShareReadingsExcelWhatsapp');
   const originalText = btn.textContent;
+
+  // Camino rápido: si ya tenemos el Excel pre-generado en caché, se comparte
+  // en el mismo instante del toque, sin ningún "await" antes de por medio.
+  // Esto es justo lo que hace falta para que el móvil SÍ muestre el diálogo
+  // nativo de compartir (y puedas elegir WhatsApp) en lugar de bloquearlo.
+  if (readingsXlsxCache && readingsXlsxCache.file &&
+      navigator.canShare && navigator.canShare({ files: [readingsXlsxCache.file] })) {
+    try {
+      await navigator.share({
+        files: [readingsXlsxCache.file],
+        title: 'Lecturas',
+        text: 'Mis lecturas (DocuFest)'
+      });
+      return;
+    } catch (err) {
+      if (err && err.name === 'AbortError') return; // el usuario cerró el diálogo
+      console.error(err);
+      // seguimos al camino de reserva por si la caché estaba desfasada
+    }
+  }
+
   btn.textContent = 'Generando Excel...';
   btn.disabled = true;
   try {
