@@ -1701,14 +1701,53 @@ async function exportReadingsToXlsx(){
   setTimeout(() => URL.revokeObjectURL(url), 5000);
 }
 
+/* Descarga un File dado (usado como red de seguridad cuando compartir
+   falla o no está disponible). */
+function downloadFile(file){
+  const url = URL.createObjectURL(file);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = file.name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+
+/* Intenta compartir un File con el share sheet nativo (donde se puede
+   elegir WhatsApp). Si el sistema lo rechaza por el motivo que sea (el
+   usuario cancela, el navegador no lo soporta, o el propio sistema
+   operativo bloquea compartir archivos desde esta app — algo frecuente en
+   apps instaladas en la pantalla de inicio de iPhone, y que no se puede
+   forzar desde el código), cae automáticamente en descargar el archivo
+   para que se pueda adjuntar a mano en WhatsApp. Devuelve true si se
+   compartió, false si se canceló o si se ha caído a la descarga. */
+async function shareOrDownloadFile(file, shareData){
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file], ...shareData });
+      return true;
+    } catch (err) {
+      if (err && err.name === 'AbortError') return false; // el usuario cerró el diálogo
+      console.error(err);
+      downloadFile(file);
+      alert('El sistema no ha permitido abrir el menú de compartir (' + err.message + '). Se ha descargado el Excel en su lugar: ábrelo desde WhatsApp con "Adjuntar > Documento" para enviarlo.');
+      return false;
+    }
+  }
+  downloadFile(file);
+  alert('Este navegador no permite compartir archivos directamente. Se ha descargado el Excel: ábrelo desde WhatsApp con "Adjuntar > Documento" para enviarlo.');
+  return false;
+}
+
 /* ---------- Caché en memoria del Excel de Lecturas para compartir ----------
    Safari/iOS (y algunos Android) solo abren el diálogo nativo de compartir
    si navigator.share() se llama en el mismo instante del toque, sin ningún
    "await" antes en medio; si hay que esperar a leer la base de datos y
    generar el archivo primero, consideran que ya no hay "gesto del usuario"
-   y lo bloquean (eso es el "no me da permiso"). Para evitarlo, se regenera
-   el archivo en segundo plano cada vez que se entra en la pantalla de
-   Lecturas, y el botón de compartir usa esa copia ya lista al instante. */
+   y lo bloquean. Para evitarlo, se regenera el archivo en segundo plano
+   cada vez que se entra en la pantalla de Lecturas, y el botón de
+   compartir usa esa copia ya lista al instante. */
 let readingsXlsxCache = null; // { file: File, builtAt: number }
 async function refreshReadingsXlsxCache(){
   try {
@@ -1728,41 +1767,16 @@ async function refreshReadingsXlsxCache(){
 
 /* Comparte el Excel de Lecturas usando el share sheet nativo del sistema
    (Web Share API con archivos), donde el usuario puede elegir WhatsApp.
-   Si el navegador/dispositivo no lo soporta, se descarga el archivo y se
-   avisa de que hay que adjuntarlo manualmente en WhatsApp. */
+   Si el navegador/dispositivo no lo soporta o el sistema lo rechaza, se
+   descarga el archivo y se avisa de que hay que adjuntarlo manualmente
+   en WhatsApp. */
 async function shareReadingsExcelViaWhatsApp(){
   const file = await buildReadingsXlsxFile();
   if (!file) return;
   const xlsxFile = new File([file.blob], file.filename, {
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
   });
-
-  if (navigator.canShare && navigator.canShare({ files: [xlsxFile] })) {
-    try {
-      await navigator.share({
-        files: [xlsxFile],
-        title: 'Lecturas',
-        text: 'Mis lecturas (DocuFest)'
-      });
-      return;
-    } catch (err) {
-      if (err && err.name === 'AbortError') return; // el usuario canceló el share sheet
-      console.error(err);
-      alert('No se pudo abrir el menú para compartir: ' + err.message);
-      return;
-    }
-  }
-
-  // Fallback: el dispositivo/navegador no soporta compartir archivos.
-  const url = URL.createObjectURL(file.blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = file.filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 5000);
-  alert('Este navegador no permite compartir archivos directamente. Se ha descargado el Excel: ábrelo desde WhatsApp con "Adjuntar > Documento" para enviarlo.');
+  await shareOrDownloadFile(xlsxFile, { title: 'Lecturas', text: 'Mis lecturas (DocuFest)' });
 }
 
 /* ---------- Lector de .xlsx sin dependencias externas -----------
@@ -5485,23 +5499,13 @@ document.getElementById('btnShareReadingsExcelWhatsapp').addEventListener('click
   const originalText = btn.textContent;
 
   // Camino rápido: si ya tenemos el Excel pre-generado en caché, se comparte
-  // en el mismo instante del toque, sin ningún "await" antes de por medio.
-  // Esto es justo lo que hace falta para que el móvil SÍ muestre el diálogo
-  // nativo de compartir (y puedas elegir WhatsApp) en lugar de bloquearlo.
-  if (readingsXlsxCache && readingsXlsxCache.file &&
-      navigator.canShare && navigator.canShare({ files: [readingsXlsxCache.file] })) {
-    try {
-      await navigator.share({
-        files: [readingsXlsxCache.file],
-        title: 'Lecturas',
-        text: 'Mis lecturas (DocuFest)'
-      });
-      return;
-    } catch (err) {
-      if (err && err.name === 'AbortError') return; // el usuario cerró el diálogo
-      console.error(err);
-      // seguimos al camino de reserva por si la caché estaba desfasada
-    }
+  // en el mismo instante del toque, sin ningún "await" antes de por medio
+  // (necesario para que algunos móviles muestren el diálogo nativo). Si el
+  // sistema lo rechaza igualmente, shareOrDownloadFile cae automáticamente
+  // en descargar el archivo, así que esto nunca deja al usuario sin nada.
+  if (readingsXlsxCache && readingsXlsxCache.file) {
+    await shareOrDownloadFile(readingsXlsxCache.file, { title: 'Lecturas', text: 'Mis lecturas (DocuFest)' });
+    return;
   }
 
   btn.textContent = 'Generando Excel...';
@@ -5510,7 +5514,7 @@ document.getElementById('btnShareReadingsExcelWhatsapp').addEventListener('click
     await shareReadingsExcelViaWhatsApp();
   } catch (err) {
     console.error(err);
-    alert('No se pudo compartir el Excel: ' + err.message);
+    alert('No se pudo generar el Excel: ' + err.message);
   } finally {
     btn.textContent = originalText;
     btn.disabled = false;
