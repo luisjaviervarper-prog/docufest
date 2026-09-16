@@ -1683,7 +1683,11 @@ async function buildReadingsXlsxFile(opts){
     { name: 'xl/_rels/workbook.xml.rels', data: encoder.encode(workbookRels) },
     { name: 'xl/worksheets/sheet1.xml', data: encoder.encode(sheetXml) },
   ];
-  const blob = await buildZip(entries);
+  const zipBlob = await buildZip(entries);
+  // buildZip() devuelve el blob como "application/zip"; hay que re-etiquetarlo
+  // con el tipo MIME real de Excel, si no el sistema lo trata como un .zip
+  // y lo extrae en sus piezas internas en vez de abrirlo como un Excel.
+  const blob = new Blob([await zipBlob.arrayBuffer()], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
   const filename = `DocuFest_Lecturas_${new Date().toISOString().slice(0,10)}.xlsx`;
   return { blob, filename };
 }
