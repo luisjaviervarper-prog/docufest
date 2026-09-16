@@ -722,6 +722,7 @@
         <button class="btn-outline" id="btnExportReadingsExcel" style="margin-bottom:0;">⬇ Exportar Excel</button>
       </div>
       <input type="file" id="readingsExcelInput" accept=".xlsx" style="display:none">
+      <button class="btn-outline" id="btnShareReadingsExcelWhatsapp">📲 Compartir Excel por WhatsApp</button>
       <button class="btn-outline" id="btnReadingsStats">📊 Estadísticas</button>
       <button class="btn-outline" id="btnFormatReadings" style="color:var(--accent-crimson); border-color:var(--accent-crimson);">🗑 Formatear datos y volver a importar</button>
       <div id="readingYearsList"></div>
@@ -1650,9 +1651,12 @@ function buildSheetXml(rows){
   }).join('');
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>${rowsXml}</sheetData></worksheet>`;
 }
-async function exportReadingsToXlsx(){
+/* Genera el blob .xlsx de Lecturas y su nombre de archivo. Devuelve null
+   (tras avisar con alert) si no hay lecturas que exportar. Lo usan tanto
+   la descarga normal como el botón de compartir por WhatsApp. */
+async function buildReadingsXlsxFile(){
   const all = await dbGetAll('readings');
-  if (all.length === 0) { alert('No hay lecturas para exportar todavía.'); return; }
+  if (all.length === 0) { alert('No hay lecturas para exportar todavía.'); return null; }
   const buckets = await dbGetAll('readingYears');
   const yearKeys = sortReadingYearKeys(buckets.map(b => b.yearKey));
   const orderIndex = Object.fromEntries(yearKeys.map((k, i) => [k, i]));
@@ -1678,14 +1682,60 @@ async function exportReadingsToXlsx(){
     { name: 'xl/worksheets/sheet1.xml', data: encoder.encode(sheetXml) },
   ];
   const blob = await buildZip(entries);
-  const url = URL.createObjectURL(blob);
+  const filename = `DocuFest_Lecturas_${new Date().toISOString().slice(0,10)}.xlsx`;
+  return { blob, filename };
+}
+
+async function exportReadingsToXlsx(){
+  const file = await buildReadingsXlsxFile();
+  if (!file) return;
+  const url = URL.createObjectURL(file.blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `DocuFest_Lecturas_${new Date().toISOString().slice(0,10)}.xlsx`;
+  a.download = file.filename;
   document.body.appendChild(a);
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+
+/* Comparte el Excel de Lecturas usando el share sheet nativo del sistema
+   (Web Share API con archivos), donde el usuario puede elegir WhatsApp.
+   Si el navegador/dispositivo no lo soporta, se descarga el archivo y se
+   avisa de que hay que adjuntarlo manualmente en WhatsApp. */
+async function shareReadingsExcelViaWhatsApp(){
+  const file = await buildReadingsXlsxFile();
+  if (!file) return;
+  const xlsxFile = new File([file.blob], file.filename, {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  });
+
+  if (navigator.canShare && navigator.canShare({ files: [xlsxFile] })) {
+    try {
+      await navigator.share({
+        files: [xlsxFile],
+        title: 'Lecturas',
+        text: 'Mis lecturas (DocuFest)'
+      });
+      return;
+    } catch (err) {
+      if (err && err.name === 'AbortError') return; // el usuario canceló el share sheet
+      console.error(err);
+      alert('No se pudo abrir el menú para compartir: ' + err.message);
+      return;
+    }
+  }
+
+  // Fallback: el dispositivo/navegador no soporta compartir archivos.
+  const url = URL.createObjectURL(file.blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = file.filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+  alert('Este navegador no permite compartir archivos directamente. Se ha descargado el Excel: ábrelo desde WhatsApp con "Adjuntar > Documento" para enviarlo.');
 }
 
 /* ---------- Lector de .xlsx sin dependencias externas -----------
@@ -5387,7 +5437,36 @@ document.getElementById('btnAddReadingYear').addEventListener('click', async () 
   go('readings-detail', { yearKey: String(year) });
 });
 document.getElementById('btnImportReadingsExcel').addEventListener('click', () => document.getElementById('readingsExcelInput').click());
-document.getElementById('btnExportReadingsExcel').addEventListener('click', () => exportReadingsToXlsx());
+document.getElementById('btnExportReadingsExcel').addEventListener('click', async () => {
+  const btn = document.getElementById('btnExportReadingsExcel');
+  const originalText = btn.textContent;
+  btn.textContent = 'Generando Excel...';
+  btn.disabled = true;
+  try {
+    await exportReadingsToXlsx();
+  } catch (err) {
+    console.error(err);
+    alert('No se pudo generar el Excel de Lecturas: ' + err.message);
+  } finally {
+    btn.textContent = originalText;
+    btn.disabled = false;
+  }
+});
+document.getElementById('btnShareReadingsExcelWhatsapp').addEventListener('click', async () => {
+  const btn = document.getElementById('btnShareReadingsExcelWhatsapp');
+  const originalText = btn.textContent;
+  btn.textContent = 'Generando Excel...';
+  btn.disabled = true;
+  try {
+    await shareReadingsExcelViaWhatsApp();
+  } catch (err) {
+    console.error(err);
+    alert('No se pudo compartir el Excel: ' + err.message);
+  } finally {
+    btn.textContent = originalText;
+    btn.disabled = false;
+  }
+});
 document.getElementById('btnReadingsStats').addEventListener('click', () => go('readings-stats'));
 document.getElementById('btnFormatReadings').addEventListener('click', async () => {
   if (!confirm('Esto borrará TODOS los libros y años guardados en Lecturas. No se puede deshacer. ¿Continuar?')) return;
